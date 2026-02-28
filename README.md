@@ -139,10 +139,4 @@ npm run dev            # vite dev server → port 5173
 
 ---
 
-## Akun Testing
 
-| Role | Username | Password |
-|---|---|---|
-| Admin | `ALB` | `321321` |
-| Supervisor | `FDL` | `123456` |
-| Salesman | `DND` | `dnd123` |
