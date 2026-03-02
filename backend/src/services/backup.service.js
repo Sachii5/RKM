@@ -12,19 +12,31 @@ const performResetAndBackup = () => {
     fs.mkdirSync(BACKUP_DIR, { recursive: true });
   }
 
-  const today = dayjs().format('YYYYMMDD');
+  const today = dayjs().format('YYYYMMDD_HHmmss');
   const backupFilename = `visits_${today}.sqlite`;
   const backupPath = path.join(BACKUP_DIR, backupFilename);
+
+  // Security: Validate backup path stays within backup directory (prevent path traversal)
+  const resolvedBackup = path.resolve(backupPath);
+  if (!resolvedBackup.startsWith(path.resolve(BACKUP_DIR))) {
+    throw new Error('Invalid backup path');
+  }
 
   // 1. Backup visits.db into /backup
   fs.copyFileSync(DB_PATH, backupPath);
 
-  // 2. Clear visit_logs
-  // Use a transaction for safety
+  // 2. Clear all active zone data in a transaction
   const clearDb = db.transaction(() => {
     db.prepare('DELETE FROM visit_logs').run();
-    // Optional: Reset autoincrement
-    db.prepare(`UPDATE sqlite_sequence SET seq = 0 WHERE name = 'visit_logs'`).run();
+    db.prepare('DELETE FROM zone_members').run();
+    db.prepare('DELETE FROM zones').run();
+    
+    // Reset autoincrement safely (table may not have entries in sqlite_sequence yet)
+    try {
+      db.prepare(`DELETE FROM sqlite_sequence WHERE name IN ('visit_logs', 'zone_members', 'zones')`).run();
+    } catch (e) {
+      // sqlite_sequence may not exist if no AUTOINCREMENT rows were inserted yet — safe to ignore
+    }
   });
   
   clearDb();

@@ -14,6 +14,6 @@ const verifyToken = (token) => {
 
 module.exports = {
   generateToken,
-  verifyToken,
-  JWT_SECRET
+  verifyToken
+  // Security: JWT_SECRET is no longer exported
 };

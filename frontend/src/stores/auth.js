@@ -6,21 +6,38 @@ export const useAuthStore = defineStore('auth', {
     token: localStorage.getItem('token') || null,
   }),
   getters: {
-    isAuthenticated: (state) => !!state.token,
+    isAuthenticated: (state) => {
+      if (!state.token) return false
+      // Security: Check if token is expired
+      try {
+        const decoded = jwtDecode(state.token)
+        if (decoded.exp && decoded.exp * 1000 < Date.now()) {
+          return false
+        }
+        return true
+      } catch {
+        return false
+      }
+    },
     user: (state) => {
       if (!state.token) return null;
       try {
-        return jwtDecode(state.token);
+        const decoded = jwtDecode(state.token);
+        // Check expiry
+        if (decoded.exp && decoded.exp * 1000 < Date.now()) {
+          return null;
+        }
+        return decoded;
       } catch (err) {
         return null;
       }
     },
-    role: (state) => {
-      const u = state.user; // getter reference
+    role() {
+      const u = this.user;
       return u ? u.role : null;
     },
-    isFirstLogin: (state) => {
-      const u = state.user;
+    isFirstLogin() {
+      const u = this.user;
       return u ? u.first_login === 1 : false;
     }
   },
@@ -32,6 +49,14 @@ export const useAuthStore = defineStore('auth', {
     logout() {
       this.token = null;
       localStorage.removeItem('token');
+    },
+    // Auto-check and clear expired tokens
+    checkTokenExpiry() {
+      if (this.token && !this.isAuthenticated) {
+        this.logout();
+        return false;
+      }
+      return true;
     }
   }
 })

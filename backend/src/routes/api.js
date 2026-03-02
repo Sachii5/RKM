@@ -11,6 +11,12 @@ const { isValidSalesman, getTodayDateString } = require('../utils/helpers');
 const authenticate = require('../middleware/auth.middleware');
 const { requireSupervisorOrAbove, requireSalesman, requireAdmin } = require('../middleware/role.middleware');
 
+// === Input Validation Helpers ===
+const isValidDateFormat = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d);
+const isValidSalesmanCode = (s) => typeof s === 'string' && /^[A-Z]{2,5}$/i.test(s.trim());
+const isPositiveInteger = (v) => Number.isInteger(Number(v)) && Number(v) > 0;
+const sanitizeString = (s, maxLen = 100) => typeof s === 'string' ? s.trim().substring(0, maxLen) : '';
+
 // GET /api/members (Used by Map plotting for Supervisors/Admins)
 router.get('/members', authenticate, requireSupervisorOrAbove, async (req, res) => {
   try {
@@ -25,14 +31,24 @@ router.get('/members', authenticate, requireSupervisorOrAbove, async (req, res) 
 router.post('/zone/radius', authenticate, requireSupervisorOrAbove, async (req, res) => {
   const { lat, lng, radius_km, salesman_code } = req.body;
   if (lat == null || lng == null || !radius_km || radius_km <= 0 || !salesman_code) {
-    return res.status(400).json({ error: 'Valid lat, lng, radius_km, and salesman_code required' });
+    return res.status(400).json({ error: 'Lat, lng, radius_km, dan salesman_code harus diisi dengan benar' });
+  }
+  if (!isValidSalesmanCode(salesman_code)) {
+    return res.status(400).json({ error: 'Format kode salesman tidak valid' });
+  }
+  if (typeof lat !== 'number' || typeof lng !== 'number' || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    return res.status(400).json({ error: 'Koordinat tidak valid' });
+  }
+  if (typeof radius_km !== 'number' || radius_km > 100) {
+    return res.status(400).json({ error: 'Radius harus berupa angka dan maksimal 100 km' });
   }
 
   try {
     const result = await getZoneByRadius(lat, lng, radius_km, salesman_code.toUpperCase());
     res.json(result);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('zone/radius error:', err.message);
+    res.status(500).json({ error: 'Gagal memproses zona. Silakan coba lagi.' });
   }
 });
 
@@ -40,14 +56,18 @@ router.post('/zone/radius', authenticate, requireSupervisorOrAbove, async (req, 
 router.post('/zone/kelurahan', authenticate, requireSupervisorOrAbove, async (req, res) => {
   const { kelurahan, salesman_code } = req.body;
   if (!kelurahan || !salesman_code) {
-    return res.status(400).json({ error: 'Kelurahan and salesman_code required' });
+    return res.status(400).json({ error: 'Kecamatan dan salesman_code harus diisi' });
+  }
+  if (!isValidSalesmanCode(salesman_code)) {
+    return res.status(400).json({ error: 'Format kode salesman tidak valid' });
   }
 
   try {
-    const result = await getZoneByKelurahan(kelurahan, salesman_code.toUpperCase());
+    const result = await getZoneByKelurahan(sanitizeString(kelurahan, 50), salesman_code.toUpperCase());
     res.json(result);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('zone/kelurahan error:', err.message);
+    res.status(500).json({ error: 'Gagal memproses zona. Silakan coba lagi.' });
   }
 });
 
@@ -56,7 +76,19 @@ router.post('/zone/create', authenticate, requireSupervisorOrAbove, (req, res) =
   const { salesman_code, scheduled_date, zone_type, members, center_lat, center_lng, radius_km, kelurahan } = req.body;
   
   if (!Array.isArray(members) || members.length === 0 || !salesman_code || !scheduled_date) {
-    return res.status(400).json({ error: 'Invalid payload for zone creation' });
+    return res.status(400).json({ error: 'Data zona tidak lengkap' });
+  }
+  if (!isValidSalesmanCode(salesman_code)) {
+    return res.status(400).json({ error: 'Format kode salesman tidak valid' });
+  }
+  if (!isValidDateFormat(scheduled_date)) {
+    return res.status(400).json({ error: 'Format tanggal tidak valid (YYYY-MM-DD)' });
+  }
+  if (!['radius', 'kelurahan'].includes(zone_type)) {
+    return res.status(400).json({ error: 'Tipe zona tidak valid' });
+  }
+  if (members.length > 50) {
+    return res.status(400).json({ error: 'Jumlah member melebihi batas maksimum (50)' });
   }
 
   try {
@@ -78,14 +110,19 @@ router.post('/zone/create', authenticate, requireSupervisorOrAbove, (req, res) =
     if (err.message.includes('Conflict:')) {
       return res.status(409).json({ error: err.message });
     }
-    res.status(500).json({ error: err.message });
+    console.error('zone/create error:', err.message);
+    res.status(500).json({ error: 'Gagal membuat zona. Silakan coba lagi.' });
   }
 });
 
 // DELETE /api/zone/:id
 router.delete('/zone/:id', authenticate, requireSupervisorOrAbove, (req, res) => {
+  const zoneId = req.params.id;
+  if (!isPositiveInteger(zoneId)) {
+    return res.status(400).json({ error: 'ID zona tidak valid' });
+  }
   try {
-    softDeleteZone(req.user.userid, req.user.role, req.params.id);
+    softDeleteZone(req.user.userid, req.user.role, Number(zoneId));
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -156,14 +193,20 @@ router.get('/zones/member-codes', authenticate, requireSupervisorOrAbove, (req, 
 
 // GET /api/route/today
 router.get('/route/today', authenticate, requireSalesman, (req, res) => {
-  const salesman = req.user.userid.toUpperCase(); // Derived securely from JWT
-  const today = req.query.date || getTodayDateString();
+  const salesman = req.user.userid.toUpperCase();
+  const dateParam = req.query.date || getTodayDateString();
+  
+  // Validate date format to prevent injection
+  if (!isValidDateFormat(dateParam)) {
+    return res.status(400).json({ error: 'Format tanggal tidak valid' });
+  }
 
   try {
-    const data = getTodayRoute(salesman, today);
+    const data = getTodayRoute(salesman, dateParam);
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('route/today error:', err.message);
+    res.status(500).json({ error: 'Gagal memuat rute. Silakan coba lagi.' });
   }
 });
 
@@ -171,7 +214,10 @@ router.get('/route/today', authenticate, requireSalesman, (req, res) => {
 router.post('/visit/mark', authenticate, requireSalesman, (req, res) => {
   const { zone_id, member_code } = req.body;
   if (!member_code || !zone_id) {
-    return res.status(400).json({ error: 'Member code and zone_id required' });
+    return res.status(400).json({ error: 'Member code dan zone_id harus diisi' });
+  }
+  if (!isPositiveInteger(zone_id)) {
+    return res.status(400).json({ error: 'zone_id tidak valid' });
   }
 
   try {
@@ -181,15 +227,16 @@ router.post('/visit/mark', authenticate, requireSalesman, (req, res) => {
       WHERE zone_id = ? AND member_code = ? AND visited = 0
     `);
     
-    const info = stmt.run(new Date().toISOString(), zone_id, member_code);
+    const info = stmt.run(new Date().toISOString(), Number(zone_id), sanitizeString(member_code, 20));
     
     if (info.changes === 0) {
-      return res.status(404).json({ error: 'Pending route member not found for this zone' });
+      return res.status(404).json({ error: 'Member kunjungan tidak ditemukan untuk zona ini' });
     }
     
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('visit/mark error:', err.message);
+    res.status(500).json({ error: 'Gagal memperbarui status kunjungan' });
   }
 });
 
@@ -197,7 +244,10 @@ router.post('/visit/mark', authenticate, requireSalesman, (req, res) => {
 router.post('/visit/cancel', authenticate, requireSalesman, (req, res) => {
   const { zone_id, member_code } = req.body;
   if (!member_code || !zone_id) {
-    return res.status(400).json({ error: 'Member code and zone_id required' });
+    return res.status(400).json({ error: 'Member code dan zone_id harus diisi' });
+  }
+  if (!isPositiveInteger(zone_id)) {
+    return res.status(400).json({ error: 'zone_id tidak valid' });
   }
 
   try {
@@ -207,7 +257,7 @@ router.post('/visit/cancel', authenticate, requireSalesman, (req, res) => {
       WHERE zone_id = ? AND member_code = ? AND visited = 1
     `);
     
-    const info = stmt.run(zone_id, member_code);
+    const info = stmt.run(Number(zone_id), sanitizeString(member_code, 20));
     
     if (info.changes === 0) {
       return res.status(404).json({ error: 'Member kunjungan tidak ditemukan atau belum ditandai' });
@@ -215,7 +265,8 @@ router.post('/visit/cancel', authenticate, requireSalesman, (req, res) => {
     
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('visit/cancel error:', err.message);
+    res.status(500).json({ error: 'Gagal membatalkan kunjungan' });
   }
 });
 
