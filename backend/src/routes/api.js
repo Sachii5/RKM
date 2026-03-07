@@ -84,7 +84,7 @@ router.post('/zone/create', authenticate, requireSupervisorOrAbove, (req, res) =
   if (!isValidDateFormat(scheduled_date)) {
     return res.status(400).json({ error: 'Format tanggal tidak valid (YYYY-MM-DD)' });
   }
-  if (!['radius', 'kelurahan'].includes(zone_type)) {
+  if (!['radius', 'kelurahan', 'manual'].includes(zone_type)) {
     return res.status(400).json({ error: 'Tipe zona tidak valid' });
   }
   if (members.length > 50) {

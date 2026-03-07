@@ -11,7 +11,6 @@
           <option value="DPT">DPT</option>
           <option value="FRL">FRL</option>
           <option value="LID">LID</option>
-          <option value="FDL">FDL</option>
         </select>
       </div>
 
@@ -25,6 +24,7 @@
         <select v-model="form.mode" class="form-control" @change="resetPreview">
           <option value="radius">Radius Centered</option>
           <option value="kelurahan">By Kecamatan (Sub-district)</option>
+          <option value="manual">Manual Peta</option>
         </select>
       </div>
 
@@ -45,7 +45,7 @@
       </div>
 
       <!-- Mode: Kecamatan -->
-      <div v-else class="animate-fade-in">
+      <div v-else-if="form.mode === 'kelurahan'" class="animate-fade-in">
         <div class="form-group mb-6">
           <label class="form-label">Select Kecamatan</label>
           <select v-model="form.kelurahan" class="form-control bg-white" @change="resetPreview">
@@ -55,41 +55,62 @@
         </div>
       </div>
 
+      <!-- Mode: Manual -->
+      <div v-else-if="form.mode === 'manual'" class="animate-fade-in card bg-gray-50 mb-6">
+          <p class="text-sm text-gray-500"><strong>Mode Manual:</strong> Klik tombol mulai di bawah, lalu pilih member langsung dari peta dengan mengklik pin abu-abu yang tersedia.</p>
+      </div>
+
       <button @click="calculateZone" class="btn btn-primary w-full mb-4" :disabled="!isReadyToCalculate || loading">
-        {{ loading ? 'Calculating...' : 'Preview Zone Layout' }}
+        {{ loading ? 'Calculating...' : (form.mode === 'manual' ? 'Mulai Pilih Manual' : 'Preview Zone Layout') }}
       </button>
 
       <!-- Results Panel -->
       <div v-if="previewResult" class="results mt-6 animate-fade-in">
-        <h3 class="font-bold mb-2">Zone Preview</h3>
+        <h3 class="font-bold mb-2">Preview Zona</h3>
         <p class="text-sm mb-4">
-          Total Match Found: <strong>{{ previewResult.members.length }}</strong>
+          Total ditemukan: <strong>{{ previewResult.members.length }}</strong>
         </p>
         
         <div v-if="previewResult.requiresConfirmation" class="bg-yellow-50 text-yellow-800 p-3 rounded mb-4 text-sm border border-yellow-200">
-          <strong>Notice:</strong> More than 18 members found. The closest/first 18 have been selected by default. Please check/uncheck to adjust your sequence.
+          <strong>Perhatian:</strong> Lebih dari 18 member ditemukan. 18 terdekat telah dipilih otomatis. Sesuaikan dengan centang/hapus centang.
         </div>
 
-        <div v-if="previewResult.members.length > 0" class="mb-4 max-h-60 overflow-y-auto bg-gray-50 rounded p-2 border shadow-inner">
-           <div v-for="(m, idx) in previewResult.members" :key="m.cus_kodemember" class="flex items-start gap-2 mb-3 text-sm pb-2 border-b border-gray-200 last:border-0" :class="{'bg-yellow-50': m.is_extra}">
-               <input type="checkbox" :id="'chk-'+m.cus_kodemember" :value="m.cus_kodemember" v-model="selectedMemberIds" @change="drawMapEntities" class="mt-1 flex-shrink-0" />
-               <label :for="'chk-'+m.cus_kodemember" class="flex-1 cursor-pointer">
-                 <div class="font-bold text-gray-800">
-                   {{ m.cus_namamember }}
-                   <span v-if="m.is_extra" class="ml-1 text-[10px] bg-yellow-200 text-yellow-800 px-1 py-0.5 rounded">OUTSIDE</span>
-                 </div>
-                 <div class="text-xs text-blue-600 mb-1" v-if="m.distance_km">{{ m.distance_km.toFixed(2) }} km from SPI KUNINGAN</div>
-                 <div class="text-xs text-gray-500 line-clamp-2" :title="m.cus_alamatmember5 + ' ' + m.cus_alamatmember4">{{ m.cus_alamatmember5 }}</div>
-               </label>
-           </div>
+        <div v-if="previewResult.members.length > 0" class="mb-4 preview-table-wrap">
+          <table class="preview-table">
+            <thead>
+              <tr>
+                <th class="col-chk">✓</th>
+                <th class="col-no">No</th>
+                <th class="col-name">Nama Member</th>
+                <th class="col-code">Kode</th>
+                <th class="col-dist">Jarak</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(m, idx) in previewResult.members" :key="m.cus_kodemember"
+                  :class="{'row-extra': m.is_extra, 'row-selected': selectedMemberIds.includes(m.cus_kodemember)}">
+                <td class="col-chk">
+                  <input type="checkbox" :id="'chk-'+m.cus_kodemember" :value="m.cus_kodemember" 
+                         v-model="selectedMemberIds" @change="drawMapEntities(true)" />
+                </td>
+                <td class="col-no">{{ idx + 1 }}</td>
+                <td class="col-name">
+                  {{ m.cus_namamember }}
+                  <span v-if="m.is_extra" class="badge-outside">LUAR</span>
+                </td>
+                <td class="col-code">{{ m.cus_kodemember }}</td>
+                <td class="col-dist">{{ m.distance_km ? m.distance_km.toFixed(1) + ' km' : '-' }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
         <div class="text-sm text-right mb-4 font-bold" :class="selectedMemberIds.length > 18 ? 'text-red-600' : 'text-green-600'">
-            Selected: {{ selectedMemberIds.length }} / 18 Quota
+            Terpilih: {{ selectedMemberIds.length }} / 18 Kuota
         </div>
 
         <button @click="commitZone" class="btn btn-success w-full" :disabled="committing || selectedMemberIds.length === 0">
-          {{ committing ? 'Saving...' : 'Lock Immutable Sequence' }}
+          {{ committing ? 'Menyimpan...' : 'Kunci Zona Kunjungan' }}
         </button>
       </div>
     </div>
@@ -161,7 +182,8 @@ const isReadyToCalculate = computed(() => {
   if (form.value.mode === 'radius') {
     return form.value.lat && form.value.lng && form.value.radius > 0
   }
-  return !!form.value.kelurahan
+  if (form.value.mode === 'kelurahan') return !!form.value.kelurahan
+  return true // manual mode is always ready
 })
 
 const parseCoords = (coordStr) => {
@@ -184,10 +206,10 @@ const fetchMembers = async () => {
   resetPreview()
   try {
     const [membersRes, zonedRes] = await Promise.all([
-      axios.get('http://localhost:3000/api/members', {
+      axios.get('http://172.26.11.6:3000/api/members', {
         headers: { Authorization: `Bearer ${auth.token}` }
       }),
-      axios.get('http://localhost:3000/api/zones/member-codes', {
+      axios.get('http://172.26.11.6:3000/api/zones/member-codes', {
         headers: { Authorization: `Bearer ${auth.token}` }
       })
     ])
@@ -221,6 +243,14 @@ const onMapClick = (e) => {
 const calculateZone = async () => {
   loading.value = true
   try {
+    if (form.value.mode === 'manual') {
+      previewResult.value = { members: [], requiresConfirmation: false }
+      selectedMemberIds.value = []
+      drawMapEntities()
+      loading.value = false
+      return
+    }
+
     const isRadius = form.value.mode === 'radius'
     const endpoint = isRadius ? '/api/zone/radius' : '/api/zone/kelurahan'
     
@@ -233,7 +263,7 @@ const calculateZone = async () => {
       payload.kelurahan = form.value.kelurahan
     }
 
-    const res = await axios.post('http://localhost:3000' + endpoint, payload, {
+    const res = await axios.post('http://172.26.11.6:3000' + endpoint, payload, {
       headers: { Authorization: `Bearer ${auth.token}` }
     })
     
@@ -259,7 +289,7 @@ const commitZone = async () => {
 
   committing.value = true
   try {
-    await axios.post('http://localhost:3000/api/zone/create', {
+    await axios.post('http://172.26.11.6:3000/api/zone/create', {
       salesman_code: form.value.salesman,
       scheduled_date: form.value.date,
       zone_type: form.value.mode,
@@ -280,7 +310,7 @@ const commitZone = async () => {
   }
 }
 
-const drawMapEntities = () => {
+const drawMapEntities = (skipFitBounds = false) => {
   if (!map) return
 
   // 1. Clear previous layers safely
@@ -317,56 +347,91 @@ const drawMapEntities = () => {
       .addTo(map)
   }
 
-  // 3. Define mapping logic arrays
-  let dGrey = allMembers.value
-  let dBlue = []  // already zoned
+  // Sync preview table for manual mode based on current selections
+  if (form.value.mode === 'manual' && previewResult.value) {
+    const selectedSet = new Set(selectedMemberIds.value)
+    previewResult.value.members = allMembers.value.filter(m => selectedSet.has(m.cus_kodemember))
+  }
+
+  // 3. Define 3 pin groups: green (selected), grey (not selected), blue (already zoned)
+  let dGrey = []
+  let dBlue = []
   let dGreen = []
-  let dYellow = []
 
   if (previewResult.value) {
-    if (form.value.mode === 'kelurahan') {
-      dGreen = previewResult.value.members.filter(m => selectedMemberIds.value.includes(m.cus_kodemember) && !m.is_extra)
-      dYellow = previewResult.value.members.filter(m => selectedMemberIds.value.includes(m.cus_kodemember) && m.is_extra)
-      
-      const activeIds = [...dGreen, ...dYellow].map(m => m.cus_kodemember)
-      const rest = allMembers.value.filter(m => !activeIds.includes(m.cus_kodemember))
-      dBlue = rest.filter(m => zonedMemberCodes.value.has(m.cus_kodemember))
-      dGrey = rest.filter(m => !zonedMemberCodes.value.has(m.cus_kodemember))
-    } else {
-      dGreen = previewResult.value.members.filter(m => selectedMemberIds.value.includes(m.cus_kodemember))
-      dYellow = previewResult.value.members.filter(m => !selectedMemberIds.value.includes(m.cus_kodemember))
-      
-      const activeIds = previewResult.value.members.map(m => m.cus_kodemember)
-      const rest = allMembers.value.filter(m => !activeIds.includes(m.cus_kodemember))
-      dBlue = rest.filter(m => zonedMemberCodes.value.has(m.cus_kodemember))
-      dGrey = rest.filter(m => !zonedMemberCodes.value.has(m.cus_kodemember))
-    }
+    // Any member that is selected (checked) → green, regardless of origin
+    const selectedSet = new Set(selectedMemberIds.value)
+    dGreen = allMembers.value.filter(m => selectedSet.has(m.cus_kodemember))
+    
+    // Remaining → blue (already zoned) or grey (available)
+    const rest = allMembers.value.filter(m => !selectedSet.has(m.cus_kodemember))
+    dBlue = rest.filter(m => zonedMemberCodes.value.has(m.cus_kodemember))
+    dGrey = rest.filter(m => !zonedMemberCodes.value.has(m.cus_kodemember))
   } else {
-    // No preview yet — show blue for zoned, grey for available
+    // No preview yet
     dBlue = allMembers.value.filter(m => zonedMemberCodes.value.has(m.cus_kodemember))
     dGrey = allMembers.value.filter(m => !zonedMemberCodes.value.has(m.cus_kodemember))
   }
 
-  // Helper inside to draw markers dynamically
-  const addTarget = (m, iconDef, label) => {
-    const distText = m.distance_km ? `<br/><small class="text-blue-600">${m.distance_km.toFixed(2)} km from center</small>` : ''
-    L.marker([m.lat, m.lng], { icon: iconDef })
-      .bindPopup(`<strong>${m.cus_namamember}</strong><br/>${label}${distText}`)
-      .addTo(markersLayer)
+  // Global handler for popup button clicks (Leaflet popups are raw HTML, no Vue bindings)
+  window.__zoningAction = (memberCode, action) => {
+    if (action === 'add') {
+      if (!selectedMemberIds.value.includes(memberCode)) {
+        selectedMemberIds.value.push(memberCode)
+      }
+    } else if (action === 'remove') {
+      selectedMemberIds.value = selectedMemberIds.value.filter(id => id !== memberCode)
+    }
+    drawMapEntities(true)
   }
 
-  dBlue.forEach(m => addTarget(m, icons.blue, "(Sudah Masuk Zona)"))
-  if (form.value.mode === 'kelurahan') {
-    dGrey.forEach(m => addTarget(m, icons.grey, "(Tersedia)"))
-    dGreen.forEach(m => addTarget(m, icons.green, "(Terpilih - Dalam Kecamatan)"))
-    dYellow.forEach(m => addTarget(m, icons.yellow, "(Terpilih - Luar Kecamatan)"))
-  } else {
-    dGrey.forEach(m => addTarget(m, icons.grey, "(Tersedia)"))
-    dGreen.forEach(m => addTarget(m, icons.green, "(Terpilih untuk Zona)"))
-    dYellow.forEach(m => addTarget(m, icons.yellow, "(Tidak Terpilih)"))
+  // Helper: build popup HTML with interactive button
+  const buildPopup = (m, label) => {
+    const isSelected = selectedMemberIds.value.includes(m.cus_kodemember)
+    const isZoned = zonedMemberCodes.value.has(m.cus_kodemember)
+    const hasPreview = !!previewResult.value
+
+    let html = `<div style="min-width:180px;font-family:Inter,sans-serif;">
+      <div style="font-weight:700;font-size:13px;margin-bottom:4px;">${m.cus_namamember}</div>
+      <div style="font-size:11px;color:#6b7280;margin-bottom:6px;font-family:monospace;">${m.cus_kodemember}</div>
+      <div style="font-size:11px;color:#9ca3af;margin-bottom:8px;">${label}</div>`
+
+    if (hasPreview && !isZoned) {
+      if (isSelected) {
+        html += `<button onclick="window.__zoningAction('${m.cus_kodemember}','remove')" 
+          style="width:100%;padding:6px 0;border:none;border-radius:6px;background:#ef4444;color:#fff;font-weight:600;font-size:12px;cursor:pointer;">
+          ✕ Hapus dari Zona
+        </button>`
+      } else {
+        html += `<button onclick="window.__zoningAction('${m.cus_kodemember}','add')" 
+          style="width:100%;padding:6px 0;border:none;border-radius:6px;background:#10b981;color:#fff;font-weight:600;font-size:12px;cursor:pointer;">
+          ＋ Tambah ke Zona
+        </button>`
+      }
+    }
+
+    html += `</div>`
+    return html
   }
+
+  // Draw markers — only 3 colors
+  dBlue.forEach(m => {
+    L.marker([m.lat, m.lng], { icon: icons.blue })
+      .bindPopup(buildPopup(m, '🔵 Sudah masuk zona lain'))
+      .addTo(markersLayer)
+  })
+  dGrey.forEach(m => {
+    L.marker([m.lat, m.lng], { icon: icons.grey })
+      .bindPopup(buildPopup(m, '⚪ Belum dipilih'))
+      .addTo(markersLayer)
+  })
+  dGreen.forEach(m => {
+    L.marker([m.lat, m.lng], { icon: icons.green })
+      .bindPopup(buildPopup(m, '🟢 Terpilih ke zona'))
+      .addTo(markersLayer)
+  })
   
-  if (form.value.mode === 'kelurahan' && dGreen.length > 0) {
+  if (!skipFitBounds && form.value.mode === 'kelurahan' && dGreen.length > 0) {
     const bounds = L.latLngBounds(previewResult.value.members.map(m => [m.lat, m.lng]))
     map.fitBounds(bounds, { padding: [50, 50] })
   }
@@ -415,10 +480,63 @@ watch(() => form.value.radius, () => drawMapEntities())
 .rounded { border-radius: 0.25rem; }
 .p-3 { padding: 0.75rem; }
 
-/* Enforcing Leaflet global UI bounds */
-#leaflet-map {
-  outline: none;
-  background: #f8f9fa;
+/* Preview Table */
+.preview-table-wrap {
+  max-height: 300px;
+  overflow: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fafafa;
+}
+.preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+.preview-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.preview-table th {
+  background: #f3f4f6;
+  padding: 6px 8px;
+  text-align: left;
+  font-weight: 700;
+  font-size: 0.7rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  border-bottom: 2px solid #e5e7eb;
+  white-space: nowrap;
+}
+.preview-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: middle;
+}
+.preview-table tbody tr:hover {
+  background: #f0f4ff;
+}
+.row-selected {
+  background: #ecfdf5 !important;
+}
+.row-extra {
+  background: #fefce8 !important;
+}
+.col-chk { width: 30px; text-align: center; }
+.col-no { width: 30px; text-align: center; color: #9ca3af; }
+.col-name { min-width: 120px; font-weight: 600; color: #1f2937; }
+.col-code { font-family: monospace; font-size: 0.7rem; color: #6b7280; white-space: nowrap; }
+.col-dist { white-space: nowrap; color: #3b82f6; font-size: 0.7rem; }
+.badge-outside {
+  display: inline-block;
+  font-size: 9px;
+  background: #fde68a;
+  color: #854d0e;
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-left: 4px;
+  vertical-align: middle;
 }
 
 /* Tablet */
@@ -456,5 +574,13 @@ watch(() => form.value.radius, () => drawMapEntities())
   .page-title {
     font-size: 1.25rem;
   }
+  .preview-table-wrap {
+    max-height: 200px;
+  }
+  .preview-table th, .preview-table td {
+    padding: 4px 6px;
+    font-size: 0.7rem;
+  }
+  .col-name { min-width: 90px; }
 }
 </style>

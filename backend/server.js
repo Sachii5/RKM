@@ -8,9 +8,20 @@ const authRoutes = require('./src/routes/auth');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Security: Restrict CORS to frontend origin
+// Security: Restrict CORS to frontend origins (localhost + LAN)
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://172.26.11.6:5173'
+];
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
   methods: ['GET', 'POST', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
@@ -75,6 +86,6 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Terjadi kesalahan pada server.' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server listening on 0.0.0.0:${PORT}`);
 });

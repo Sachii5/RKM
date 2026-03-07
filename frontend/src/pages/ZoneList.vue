@@ -18,7 +18,6 @@
             <option value="DPT">DPT</option>
             <option value="FRL">FRL</option>
             <option value="LID">LID</option>
-            <option value="FDL">FDL</option>
           </select>
         </div>
         <div style="margin-top: 24px;">
@@ -159,11 +158,11 @@ const getStatusClass = (zone) => {
 const fetchZones = async () => {
   loading.value = true
   try {
-    let url = 'http://localhost:3000/api/zones'
+    let url = 'http://172.26.11.6:3000/api/zones'
     if (isManagement.value) {
       if (filterSalesman.value) url += `?salesman_code=${filterSalesman.value}`
     } else {
-      url = 'http://localhost:3000/api/zones/mine'
+      url = 'http://172.26.11.6:3000/api/zones/mine'
     }
     const res = await axios.get(url, {
       headers: { Authorization: `Bearer ${auth.token}` }
@@ -180,7 +179,7 @@ const fetchZones = async () => {
 const deleteZone = async (id) => {
   if (!window.confirm('Hapus zona ini? Tindakan ini tidak dapat dibatalkan.')) return
   try {
-    await axios.delete(`http://localhost:3000/api/zone/${id}`, {
+    await axios.delete(`http://172.26.11.6:3000/api/zone/${id}`, {
       headers: { Authorization: `Bearer ${auth.token}` }
     })
     zones.value = zones.value.filter(z => z.id !== id)

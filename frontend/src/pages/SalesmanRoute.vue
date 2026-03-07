@@ -108,7 +108,7 @@ const activeCoords = computed(() => {
 const fetchRoute = async () => {
   loading.value = true
   try {
-    const res = await axios.get('http://localhost:3000/api/route/today', {
+    const res = await axios.get('http://172.26.11.6:3000/api/route/today', {
       headers: { Authorization: `Bearer ${auth.token}` }
     })
     
@@ -178,7 +178,7 @@ const drawRoute = () => {
 
 const markVisited = async (memberCode) => {
   try {
-    await axios.post('http://localhost:3000/api/visit/mark', {
+    await axios.post('http://172.26.11.6:3000/api/visit/mark', {
       zone_id: zoneInfo.value.id,
       member_code: memberCode
     }, {
@@ -190,6 +190,9 @@ const markVisited = async (memberCode) => {
       target.visited = 1
     }
     drawRoute()
+
+    // Open Google Form for visit report
+    window.open('https://docs.google.com/forms/d/e/1FAIpQLSdjnaN3izPWDnK0GT3kqmoFxq4ga5eAA2pdyQGL0xv38SQqwg/viewform', '_blank')
   } catch (err) {
     alert(err.response?.data?.error || 'Gagal memperbarui status')
   }
@@ -198,7 +201,7 @@ const markVisited = async (memberCode) => {
 const cancelVisit = async (memberCode) => {
   if (!window.confirm('Batalkan kunjungan member ini?')) return
   try {
-    await axios.post('http://localhost:3000/api/visit/cancel', {
+    await axios.post('http://172.26.11.6:3000/api/visit/cancel', {
       zone_id: zoneInfo.value.id,
       member_code: memberCode
     }, {

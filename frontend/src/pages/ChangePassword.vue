@@ -58,7 +58,7 @@ const submitChange = async () => {
   loading.value = true
   error.value = ''
   try {
-    await axios.post('http://localhost:3000/api/auth/change-password', 
+    await axios.post('http://172.26.11.6:3000/api/auth/change-password', 
       { newPassword: pass1.value },
       { headers: { Authorization: `Bearer ${auth.token}` } }
     )

@@ -119,7 +119,7 @@ const searchRadius = async () => {
   activeTab.value = 'radius'
   currentZoneValue.value = form.value.radius
   try {
-    const res = await axios.post('http://localhost:3000/api/zone/radius', {
+    const res = await axios.post('http://172.26.11.6:3000/api/zone/radius', {
       lat: parseFloat(form.value.lat),
       lng: parseFloat(form.value.lng),
       radius_km: parseFloat(form.value.radius),
@@ -142,7 +142,7 @@ const searchKelurahan = async () => {
   activeTab.value = 'kelurahan'
   currentZoneValue.value = form.value.kelurahan
   try {
-    const res = await axios.post('http://localhost:3000/api/zone/kelurahan', {
+    const res = await axios.post('http://172.26.11.6:3000/api/zone/kelurahan', {
       kelurahan: form.value.kelurahan,
       salesman_code: auth.salesmanCode
     })
@@ -165,7 +165,7 @@ const assignVisits = async () => {
 
   loading.value = true
   try {
-    await axios.post('http://localhost:3000/api/visit/assign', {
+    await axios.post('http://172.26.11.6:3000/api/visit/assign', {
       salesman_code: auth.salesmanCode,
       members: results.value,
       zone_type: activeTab.value,

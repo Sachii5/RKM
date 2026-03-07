@@ -105,7 +105,7 @@ const handleLogin = async () => {
   loading.value = true
   error.value = ''
   try {
-    const res = await axios.post('http://localhost:3000/api/auth/login', {
+    const res = await axios.post('http://172.26.11.6:3000/api/auth/login', {
       userid: form.value.userid.trim().toUpperCase(),
       password: form.value.password
     })

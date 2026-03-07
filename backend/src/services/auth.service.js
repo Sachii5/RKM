@@ -59,13 +59,13 @@ const loginUser = async (userid, password) => {
   }
 
   // --- HARDOCODED TEST ACCOUNTS OVERRIDE AS REQUESTED ---
-  if (userid === 'FDL' && password === '123456') {
-    return {
-      token: generateToken({ userid: 'FDL', role: 'SUPERVISOR', first_login: 0 }),
-      role: 'SUPERVISOR',
-      first_login: false
-    };
-  }
+  // if (userid === 'FDL' && password === '123456') {
+  //   return {
+  //     token: generateToken({ userid: 'FDL', role: 'SUPERVISOR', first_login: 0 }),
+  //     role: 'SUPERVISOR',
+  //     first_login: false
+  //   };
+  // }
 
   // 2. Check PG for Admin / Supervisor (tbmaster_user)
   // Assuming fields: userid, username, userpassword, email

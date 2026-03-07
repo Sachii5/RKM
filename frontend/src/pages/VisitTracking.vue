@@ -82,7 +82,7 @@ const completedCount = computed(() => visits.value.filter(v => v.visited === 1).
 const fetchVisits = async () => {
   loading.value = true
   try {
-    const res = await axios.get(`http://localhost:3000/api/visit/today?salesman=${auth.salesmanCode}`)
+    const res = await axios.get(`http://172.26.11.6:3000/api/visit/today?salesman=${auth.salesmanCode}`)
     visits.value = res.data
   } catch (err) {
     console.error(err)
@@ -93,7 +93,7 @@ const fetchVisits = async () => {
 
 const markVisited = async (memberCode) => {
   try {
-    await axios.post('http://localhost:3000/api/visit/mark', {
+    await axios.post('http://172.26.11.6:3000/api/visit/mark', {
       salesman_code: auth.salesmanCode,
       member_code: memberCode
     })
