@@ -43,6 +43,8 @@
         :key="zone.id"
         class="card zone-card"
         :class="getStatusClass(zone)"
+        @click="isManagement && openVisitsModal(zone)"
+        :style="isManagement ? 'cursor: pointer;' : ''"
       >
         <!-- Header Row -->
         <div class="zone-header">
@@ -77,11 +79,15 @@
             <span class="detail-value">{{ zone.total_member }}</span>
           </div>
           <div class="detail-row">
-            <span class="detail-label">✅ Dikunjungi:</span>
+            <span class="detail-label">✅ Selesai:</span>
             <span class="detail-value text-green-600 font-bold">{{ zone.visited_count ?? 0 }}</span>
           </div>
           <div class="detail-row">
-            <span class="detail-label">⏳ Belum Dikunjungi:</span>
+            <span class="detail-label">⏳ Menunggu Konfirmasi:</span>
+            <span class="detail-value text-blue-500 font-bold">{{ zone.pending_approval_count ?? 0 }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">⚪ Belum Dikunjungi:</span>
             <span class="detail-value text-orange-500 font-bold">{{ zone.pending_count ?? 0 }}</span>
           </div>
           <div class="detail-row">
@@ -97,7 +103,7 @@
         <!-- Progress Bar -->
         <div class="mt-4">
           <div class="flex justify-between text-xs text-gray-500 mb-1">
-            <span>Progress Kunjungan</span>
+            <span>Progress Kunjungan (Selesai/Total)</span>
             <span>{{ zone.total_member > 0 ? Math.round((zone.visited_count / zone.total_member) * 100) : 0 }}%</span>
           </div>
           <div class="progress-bar">
@@ -120,6 +126,65 @@
         </div>
       </div>
     </div>
+
+    <!-- Visits Modal -->
+    <div v-if="showingVisitsModal" class="modal-overlay" @click.self="showingVisitsModal = false">
+      <div class="modal-content animate-fade-in" style="max-width: 700px; width: 90%;">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold">Daftar Kunjungan Zona #{{ selectedZone?.id }}</h2>
+          <button @click="showingVisitsModal = false" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+        </div>
+
+        <div v-if="loadingVisits" class="text-center py-8 text-gray-400">
+          Memuat data kunjungan...
+        </div>
+        <div v-else-if="zoneVisits.length === 0" class="text-center py-8 text-gray-400">
+          Tidak ada data member di zona ini.
+        </div>
+        <div v-else class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-gray-100 uppercase text-xs text-gray-600">
+                <th class="p-3 border-b">Nama Member</th>
+                <th class="p-3 border-b">Kode</th>
+                <th class="p-3 border-b">Status</th>
+                <th class="p-3 border-b text-center">Waktu Kunjungan</th>
+                <th class="p-3 border-b text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="v in zoneVisits" :key="v.member_code" class="border-b hover:bg-gray-50">
+                <td class="p-3 font-medium">{{ v.member_name }}</td>
+                <td class="p-3 text-sm font-mono text-gray-500">{{ v.member_code }}</td>
+                <td class="p-3 text-sm">
+                  <span v-if="v.is_approved === 1" class="text-green-600 font-bold">✅ Selesai</span>
+                  <span v-else-if="v.visited === 1" class="text-blue-500 font-bold">⏳ Menunggu Konfirmasi</span>
+                  <span v-else class="text-gray-400 font-bold">⚪ Belum</span>
+                </td>
+                <td class="p-3 text-center text-xs text-gray-500">
+                  {{ formatDateTime(v.visited_at) }}
+                  <div v-if="v.is_approved === 1" class="text-[10px] text-green-600">Disetujui: {{ formatDateTime(v.approved_at) }}</div>
+                </td>
+                <td class="p-3 text-center">
+                  <button 
+                    v-if="v.visited === 1 && v.is_approved === 0" 
+                    @click="approveVisit(v.member_code)"
+                    class="btn btn-success text-xs py-1 px-3"
+                    :disabled="approving[v.member_code]"
+                  >
+                    {{ approving[v.member_code] ? '...' : 'Terima' }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="mt-6 flex justify-end">
+          <button @click="showingVisitsModal = false" class="btn btn-secondary">Tutup</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -134,6 +199,12 @@ const zones = ref([])
 const loading = ref(true)
 const filterSalesman = ref('')
 
+const showingVisitsModal = ref(false)
+const selectedZone = ref(null)
+const zoneVisits = ref([])
+const loadingVisits = ref(false)
+const approving = ref({})
+
 const isManagement = computed(() => ['ADMIN', 'SUPERVISOR'].includes(auth.role))
 
 const formatDate = (d) => dayjs(d).format('DD MMMM YYYY')
@@ -141,28 +212,31 @@ const formatDateTime = (d) => d ? dayjs(d).format('DD/MM/YY HH:mm') : '-'
 
 const formatStatus = (zone) => {
   const p = zone.pending_count ?? 0
+  const pv = zone.pending_approval_count ?? 0
   const v = zone.visited_count ?? 0
-  if (p === 0 && v > 0) return '✓ Selesai'
+  if (p === 0 && pv === 0 && v > 0) return '✓ Selesai'
+  if (pv > 0) return `Menunggu Konfirmasi (${pv})`
   if (v > 0) return `Berjalan (${v}/${zone.total_member})`
   return 'Belum Dimulai'
 }
 
 const getStatusClass = (zone) => {
   const p = zone.pending_count ?? 0
+  const pv = zone.pending_approval_count ?? 0
   const v = zone.visited_count ?? 0
-  if (p === 0 && v > 0) return 'zone-done'
-  if (v > 0) return 'zone-active'
+  if (p === 0 && pv === 0 && v > 0) return 'zone-done'
+  if (pv > 0 || v > 0) return 'zone-active'
   return ''
 }
 
 const fetchZones = async () => {
   loading.value = true
   try {
-    let url = 'http://172.26.11.6:3000/api/zones'
+    let url = '/api/zones'
     if (isManagement.value) {
       if (filterSalesman.value) url += `?salesman_code=${filterSalesman.value}`
     } else {
-      url = 'http://172.26.11.6:3000/api/zones/mine'
+      url = '/api/zones/mine'
     }
     const res = await axios.get(url, {
       headers: { Authorization: `Bearer ${auth.token}` }
@@ -179,12 +253,57 @@ const fetchZones = async () => {
 const deleteZone = async (id) => {
   if (!window.confirm('Hapus zona ini? Tindakan ini tidak dapat dibatalkan.')) return
   try {
-    await axios.delete(`http://172.26.11.6:3000/api/zone/${id}`, {
+    await axios.delete(`/api/zone/${id}`, {
       headers: { Authorization: `Bearer ${auth.token}` }
     })
     zones.value = zones.value.filter(z => z.id !== id)
   } catch (err) {
     alert(err.response?.data?.error || 'Gagal menghapus zona')
+  }
+}
+
+const openVisitsModal = async (zone) => {
+  selectedZone.value = zone
+  showingVisitsModal.value = true
+  loadingVisits.value = true
+  zoneVisits.value = []
+  try {
+    const res = await axios.get(`/api/zone/${zone.id}/visits`, {
+      headers: { Authorization: `Bearer ${auth.token}` }
+    })
+    zoneVisits.value = res.data
+  } catch (err) {
+    alert('Gagal memuat detail kunjungan')
+  } finally {
+    loadingVisits.value = false
+  }
+}
+
+const approveVisit = async (memberCode) => {
+  if (!selectedZone.value) return
+  approving.value[memberCode] = true
+  try {
+    await axios.post('/api/visit/approve', {
+      zone_id: selectedZone.value.id,
+      member_code: memberCode
+    }, {
+      headers: { Authorization: `Bearer ${auth.token}` }
+    })
+    
+    // Update local visit list array
+    const vIndex = zoneVisits.value.findIndex(v => v.member_code === memberCode)
+    if (vIndex !== -1) {
+      zoneVisits.value[vIndex].is_approved = 1
+      zoneVisits.value[vIndex].approved_at = new Date().toISOString()
+    }
+
+    // Refresh overall stats without full page reload if possible, or just call fetchZones
+    fetchZones()
+
+  } catch (err) {
+    alert(err.response?.data?.error || 'Gagal menyetujui kunjungan')
+  } finally {
+    approving.value[memberCode] = false
   }
 }
 
@@ -269,9 +388,22 @@ onMounted(() => fetchZones())
 .text-primary { color: var(--pk-primary); }
 .text-green-600 { color: #16a34a; }
 .text-orange-500 { color: #f97316; }
+.text-blue-500 { color: #3b82f6; }
 .font-mono { font-family: monospace; }
-
 .mb-0 { margin-bottom: 0; }
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); z-index: 1000;
+  display: flex; justify-content: center; align-items: center;
+}
+.modal-content {
+  background: white; border-radius: 12px; padding: 1.5rem;
+  max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+}
+.animate-fade-in { animation: fadeIn 0.2s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
 /* Tablet */
 @media (max-width: 1024px) {
@@ -304,6 +436,25 @@ onMounted(() => fetchZones())
   }
   .detail-value {
     font-size: 0.75rem;
+  }
+  .modal-content {
+    padding: 1rem;
+    width: 95% !important;
+  }
+  .modal-content h2 {
+    font-size: 1.1rem;
+  }
+  .overflow-x-auto {
+    margin-bottom: 0.5rem;
+  }
+  /* Responsive Table For Modal */
+  table th, table td {
+    padding: 8px 4px !important;
+    font-size: 0.7rem !important;
+  }
+  .btn-success {
+    padding: 4px 8px !important;
+    font-size: 0.65rem !important;
   }
 }
 </style>

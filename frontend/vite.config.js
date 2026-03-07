@@ -8,5 +8,12 @@ export default defineConfig({
     allowedHosts: [
       'edp-2k.tailcd68fc.ts.net'
     ],
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000', // Nembak ke Express lu di PC
+        changeOrigin: true,
+        secure: false,
+      }
+    }
   },
 })

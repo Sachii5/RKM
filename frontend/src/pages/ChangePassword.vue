@@ -58,10 +58,10 @@ const submitChange = async () => {
   loading.value = true
   error.value = ''
   try {
-    await axios.post('http://172.26.11.6:3000/api/auth/change-password', 
-      { newPassword: pass1.value },
-      { headers: { Authorization: `Bearer ${auth.token}` } }
-    )
+    await axios.post('/api/auth/change-password', 
+  { newPassword: pass1.value },
+  { headers: { Authorization: `Bearer ${auth.token}` } }
+)
     
     alert('Password berhasil diperbarui. Silakan masuk kembali menggunakan password baru Anda.')
     auth.logout()

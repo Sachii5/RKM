@@ -136,7 +136,8 @@ router.get('/zones', authenticate, requireSupervisorOrAbove, (req, res) => {
     let query = `
       SELECT z.id, z.salesman_code, z.zone_type, z.kelurahan, z.center_lat, z.center_lng,
              z.radius_km, z.scheduled_date, z.total_member, z.status, z.created_at, z.created_by,
-             COUNT(CASE WHEN vl.visited = 1 THEN 1 END) as visited_count,
+             COUNT(CASE WHEN vl.visited = 1 AND vl.is_approved = 1 THEN 1 END) as visited_count,
+             COUNT(CASE WHEN vl.visited = 1 AND vl.is_approved = 0 THEN 1 END) as pending_approval_count,
              COUNT(CASE WHEN vl.visited = 0 THEN 1 END) as pending_count
       FROM zones z
       LEFT JOIN visit_logs vl ON vl.zone_id = z.id
@@ -162,7 +163,8 @@ router.get('/zones/mine', authenticate, requireSalesman, (req, res) => {
     const zones = db.prepare(`
       SELECT z.id, z.salesman_code, z.zone_type, z.kelurahan, z.scheduled_date,
              z.total_member, z.status, z.created_at,
-             COUNT(CASE WHEN vl.visited = 1 THEN 1 END) as visited_count,
+             COUNT(CASE WHEN vl.visited = 1 AND vl.is_approved = 1 THEN 1 END) as visited_count,
+             COUNT(CASE WHEN vl.visited = 1 AND vl.is_approved = 0 THEN 1 END) as pending_approval_count,
              COUNT(CASE WHEN vl.visited = 0 THEN 1 END) as pending_count
       FROM zones z
       LEFT JOIN visit_logs vl ON vl.zone_id = z.id
@@ -260,13 +262,54 @@ router.post('/visit/cancel', authenticate, requireSalesman, (req, res) => {
     const info = stmt.run(Number(zone_id), sanitizeString(member_code, 20));
     
     if (info.changes === 0) {
-      return res.status(404).json({ error: 'Member kunjungan tidak ditemukan atau belum ditandai' });
+      return res.status(404).json({ error: 'Member kunjungan tidak ditemukan, belum ditandai, atau sudah disetujui' });
     }
     
     res.json({ success: true });
   } catch (err) {
     console.error('visit/cancel error:', err.message);
     res.status(500).json({ error: 'Gagal membatalkan kunjungan' });
+  }
+});
+
+// GET /api/zone/:id/visits
+router.get('/zone/:id/visits', authenticate, requireSupervisorOrAbove, (req, res) => {
+  const zoneId = req.params.id;
+  if (!isPositiveInteger(zoneId)) return res.status(400).json({ error: 'ID zona tidak valid' });
+
+  try {
+    const visits = db.prepare(`
+      SELECT zm.member_code, zm.member_name, v.visited, v.visited_at, v.is_approved, v.approved_at
+      FROM zone_members zm
+      JOIN visit_logs v ON zm.zone_id = v.zone_id AND zm.member_code = v.member_code
+      WHERE zm.zone_id = ?
+    `).all(Number(zoneId));
+    res.json(visits);
+  } catch (err) {
+    console.error('zone/visits error:', err.message);
+    res.status(500).json({ error: 'Gagal memuat detail kunjungan' });
+  }
+});
+
+// POST /api/visit/approve
+router.post('/visit/approve', authenticate, requireSupervisorOrAbove, (req, res) => {
+  const { zone_id, member_code } = req.body;
+  if (!member_code || !zone_id) return res.status(400).json({ error: 'Member code dan zone_id harus diisi' });
+
+  try {
+    const stmt = db.prepare(`
+      UPDATE visit_logs 
+      SET is_approved = 1, approved_at = ? 
+      WHERE zone_id = ? AND member_code = ? AND visited = 1 AND is_approved = 0
+    `);
+    
+    const info = stmt.run(new Date().toISOString(), Number(zone_id), sanitizeString(member_code, 20));
+    if (info.changes === 0) {
+      return res.status(404).json({ error: 'Kunjungan tidak ditemukan atau sudah disetujui' });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Gagal menyetujui kunjungan' });
   }
 });
 

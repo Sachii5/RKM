@@ -73,6 +73,8 @@ db.exec(`
     member_code TEXT NOT NULL,
     visited INTEGER DEFAULT 0,
     visited_at TEXT,
+    is_approved INTEGER DEFAULT 0,
+    approved_at TEXT,
     FOREIGN KEY(zone_id) REFERENCES zones(id) ON DELETE CASCADE
   );
 
@@ -85,5 +87,20 @@ db.exec(`
     created_at TEXT NOT NULL
   );
 `);
+
+// Graceful migration step adding is_approved to visit_logs if missing
+try {
+  const columns = db.pragma("table_info(visit_logs)");
+  const hasIsApproved = columns.some(col => col.name === 'is_approved');
+  if (!hasIsApproved) {
+    db.exec(`
+      ALTER TABLE visit_logs ADD COLUMN is_approved INTEGER DEFAULT 0;
+      ALTER TABLE visit_logs ADD COLUMN approved_at TEXT;
+    `);
+    console.log("Migration: Added is_approved column to visit_logs table");
+  }
+} catch (e) {
+  console.log("Migration skipped or failed:", e.message);
+}
 
 module.exports = db;

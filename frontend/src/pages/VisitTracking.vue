@@ -37,7 +37,8 @@
           <tbody>
             <tr v-for="v in visits" :key="v.member_code" :class="{ 'bg-green-50': v.visited === 1 }">
               <td>
-                <span v-if="v.visited === 1" class="badge badge-success">VISITED</span>
+                <span v-if="v.is_approved === 1" class="badge badge-success">SELESAI</span>
+                <span v-else-if="v.visited === 1" class="badge bg-blue-500 text-white">MENUNGGU KONFIRMASI</span>
                 <span v-else class="badge badge-warning text-white">PENDING</span>
               </td>
               <td class="font-mono text-sm">{{ v.member_code }}</td>
@@ -57,6 +58,7 @@
                 </button>
                 <div v-else class="text-xs text-gray-500">
                   {{ formatTime(v.visited_at) }}
+                  <div v-if="v.is_approved === 1" class="text-green-600 font-bold mt-1">Disetujui</div>
                 </div>
               </td>
             </tr>
@@ -82,7 +84,7 @@ const completedCount = computed(() => visits.value.filter(v => v.visited === 1).
 const fetchVisits = async () => {
   loading.value = true
   try {
-    const res = await axios.get(`http://172.26.11.6:3000/api/visit/today?salesman=${auth.salesmanCode}`)
+    const res = await axios.get(`/api/visit/today?salesman=${auth.salesmanCode}`)
     visits.value = res.data
   } catch (err) {
     console.error(err)
@@ -93,7 +95,7 @@ const fetchVisits = async () => {
 
 const markVisited = async (memberCode) => {
   try {
-    await axios.post('http://172.26.11.6:3000/api/visit/mark', {
+    await axios.post('/api/visit/mark', {
       salesman_code: auth.salesmanCode,
       member_code: memberCode
     })
@@ -129,4 +131,25 @@ onMounted(() => {
 .truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; }
 .py-12 { padding-top: 48px; padding-bottom: 48px; }
 .font-bold { font-weight: 700; }
+
+/* Mobile Optimization */
+@media (max-width: 768px) {
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -1rem;
+    padding: 0 1rem;
+  }
+  .table th, .table td {
+    white-space: nowrap;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+  }
+  .page-title {
+    font-size: 1.5rem;
+  }
+  .btn-primary {
+    padding: 6px 12px !important;
+  }
+}
 </style>

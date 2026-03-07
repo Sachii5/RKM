@@ -56,7 +56,7 @@ const confirmReset = async () => {
   errorMessage.value = ''
 
   try {
-    const res = await axios.post('http://172.26.11.6:3000/api/reset', {}, {
+    const res = await axios.post('/api/reset', {}, {
       headers: { Authorization: `Bearer ${auth.token}` }
     })
     successMessage.value = `Reset berhasil. Backup ${res.data.backupFilename} telah dibuat.`

@@ -13,7 +13,7 @@ const getTodayRoute = (salesmanCode, scheduledDate) => {
 
   // 2. Get zone_members & visit state
   const members = db.prepare(`
-    SELECT zm.member_code, zm.member_name, zm.lat, zm.lng, zm.alamat_snapshot, zm.hp_snapshot, zm.email_snapshot, v.visited, v.visited_at
+    SELECT zm.member_code, zm.member_name, zm.lat, zm.lng, zm.alamat_snapshot, zm.hp_snapshot, zm.email_snapshot, v.visited, v.visited_at, v.is_approved
     FROM zone_members zm
     JOIN visit_logs v ON zm.zone_id = v.zone_id AND zm.member_code = v.member_code
     WHERE zm.zone_id = ?

@@ -206,10 +206,10 @@ const fetchMembers = async () => {
   resetPreview()
   try {
     const [membersRes, zonedRes] = await Promise.all([
-      axios.get('http://172.26.11.6:3000/api/members', {
+      axios.get('/api/members', {
         headers: { Authorization: `Bearer ${auth.token}` }
       }),
-      axios.get('http://172.26.11.6:3000/api/zones/member-codes', {
+      axios.get('/api/zones/member-codes', {
         headers: { Authorization: `Bearer ${auth.token}` }
       })
     ])
@@ -263,7 +263,7 @@ const calculateZone = async () => {
       payload.kelurahan = form.value.kelurahan
     }
 
-    const res = await axios.post('http://172.26.11.6:3000' + endpoint, payload, {
+    const res = await axios.post(endpoint, payload, {
       headers: { Authorization: `Bearer ${auth.token}` }
     })
     
@@ -289,7 +289,7 @@ const commitZone = async () => {
 
   committing.value = true
   try {
-    await axios.post('http://172.26.11.6:3000/api/zone/create', {
+    await axios.post('/api/zone/create', {
       salesman_code: form.value.salesman,
       scheduled_date: form.value.date,
       zone_type: form.value.mode,
