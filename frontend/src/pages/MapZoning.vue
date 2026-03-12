@@ -2,7 +2,7 @@
   <div class="map-zoning flex h-full" style="height: 100vh;">
     <!-- Sidebar Control Panel -->
     <div class="control-panel w-1/3 p-6 bg-white shadow-md z-10 overflow-y-auto">
-      <h2 class="page-title mb-4">Interactive Zoning</h2>
+      <h2 class="page-title mb-4">Buat Rute RKM</h2>
       
       <div class="form-group">
         <label class="form-label">Target Salesman</label>
@@ -15,23 +15,23 @@
       </div>
 
       <div class="form-group">
-        <label class="form-label">Scheduled Date</label>
+        <label class="form-label">Tanggal Kunjungan</label>
         <input v-model="form.date" type="date" class="form-control" required />
       </div>
 
       <div class="form-group">
-        <label class="form-label">Zone Mode</label>
+        <label class="form-label">Mode</label>
         <select v-model="form.mode" class="form-control" @change="resetPreview">
-          <option value="radius">Radius Centered</option>
-          <option value="kelurahan">By Kecamatan (Sub-district)</option>
-          <option value="manual">Manual Peta</option>
+          <option value="radius">Berdasarkan Radius</option>
+          <option value="kelurahan">Berdasarkan Kecamatan</option>
+          <option value="manual">Manual</option>
         </select>
       </div>
 
       <!-- Mode: Radius -->
       <div v-if="form.mode === 'radius'" class="animate-fade-in">
         <div class="card bg-gray-50 mb-6">
-          <p class="text-sm text-gray-500 mb-2"><strong>Step 1:</strong> Click anywhere on the map to set the routing center point.</p>
+          <p class="text-sm text-gray-500 mb-2"><strong>Langkah 1:</strong> Klik di sembarang tempat pada peta untuk menentukan titik koordinat rute.</p>
           <div class="grid grid-cols-2 gap-2 text-sm font-mono">
             <div>Lat: {{ form.lat ? form.lat.toFixed(5) : '-' }}</div>
             <div>Lng: {{ form.lng ? form.lng.toFixed(5) : '-' }}</div>
@@ -47,9 +47,9 @@
       <!-- Mode: Kecamatan -->
       <div v-else-if="form.mode === 'kelurahan'" class="animate-fade-in">
         <div class="form-group mb-6">
-          <label class="form-label">Select Kecamatan</label>
+          <label class="form-label">Pilih Kecamatan</label>
           <select v-model="form.kelurahan" class="form-control bg-white" @change="resetPreview">
-            <option value="" disabled>-- Choose Kecamatan --</option>
+            <option value="" disabled>-- Pilih Kecamatan --</option>
             <option v-for="kec in availableKecamatans" :key="kec" :value="kec">{{ kec }}</option>
           </select>
         </div>
@@ -61,7 +61,7 @@
       </div>
 
       <button @click="calculateZone" class="btn btn-primary w-full mb-4" :disabled="!isReadyToCalculate || loading">
-        {{ loading ? 'Calculating...' : (form.mode === 'manual' ? 'Mulai Pilih Manual' : 'Preview Zone Layout') }}
+        {{ loading ? 'Memproses...' : (form.mode === 'manual' ? 'Mulai Pilih Manual' : 'Pratinjau Anggota Zona') }}
       </button>
 
       <!-- Results Panel -->
@@ -110,7 +110,7 @@
         </div>
 
         <button @click="commitZone" class="btn btn-success w-full" :disabled="committing || selectedMemberIds.length === 0">
-          {{ committing ? 'Menyimpan...' : 'Kunci Zona Kunjungan' }}
+          {{ committing ? 'Menyimpan...' : 'Simpan dan Tugaskan Zona' }}
         </button>
       </div>
     </div>
@@ -229,7 +229,7 @@ const fetchMembers = async () => {
     drawMapEntities()
   } catch (err) {
     console.error(err)
-    alert('Failed to load members')
+    alert('Gagal memuat data pelanggan')
   }
 }
 
@@ -273,7 +273,7 @@ const calculateZone = async () => {
     
     drawMapEntities()
   } catch (err) {
-    alert(err.response?.data?.error || 'Failed to calculate')
+    alert(err.response?.data?.error || 'Proses gagal dilakukan')
   } finally {
     loading.value = false
   }
@@ -283,7 +283,7 @@ const commitZone = async () => {
   const finalMembers = previewResult.value.members.filter(m => selectedMemberIds.value.includes(m.cus_kodemember))
 
   if (finalMembers.length > 18) {
-    const conf = window.confirm(`You have selected ${finalMembers.length} members which forcefully exceeds the standard 18 member tracking limit. Proceed?`)
+    const conf = window.confirm(`Anda telah memilih ${finalMembers.length} pelanggan yang melampaui standar batas pemantauan rute harian (18 pelanggan). Apakah Anda tetap ingin melanjutkan?`)
     if (!conf) return
   }
 
@@ -301,10 +301,10 @@ const commitZone = async () => {
     }, {
       headers: { Authorization: `Bearer ${auth.token}` }
     })
-    alert('Zone locked and successfully assigned.')
+    alert('Zona berhasil dikunci dan ditugaskan.')
     resetPreview()
   } catch (err) {
-    alert(err.response?.data?.error || 'Failed to commit zone')
+    alert(err.response?.data?.error || 'Gagal menyimpan dan menugaskan zona')
   } finally {
     committing.value = false
   }

@@ -1,18 +1,18 @@
 <template>
   <div class="salesman-route flex flex-col h-full" style="height: 100vh;">
     <header class="mb-4">
-      <h1 class="page-title">Today's Optimized Route</h1>
+      <h1 class="page-title">Rute RKM Hari Ini</h1>
       <p class="page-subtitle text-gray-500">
-        {{ routeMembers.length }} Members scheduled for <strong class="text-primary">{{ todayDisplay }}</strong>
+        {{ routeMembers.length }} Member dijadwalkan untuk <strong class="text-primary">{{ todayDisplay }}</strong>
       </p>
     </header>
 
     <div v-if="loading" class="text-center py-12 text-gray-500">
-      Loading your geographical constraints...
+      Memuat data rute dan geografis Anda...
     </div>
     
     <div v-else-if="routeMembers.length === 0" class="card glass text-center py-12 text-gray-500">
-      No route mapped for today. Please contact your supervisor.
+      Tidak ada rute yang dipetakan untuk hari ini. Silakan hubungi supervisor Anda.
     </div>
 
     <div v-else class="flex gap-6 h-full" style="height: 75vh;">
@@ -32,14 +32,14 @@
           </div>
           
           <h3 class="font-bold text-lg mb-1 cursor-pointer hover:text-primary transition-colors duration-200" @click="member.showDetails = !member.showDetails">
-            {{ member.member_name || 'Unknown' }}
-            <span v-if="!member.showDetails" class="ml-2 text-xs text-blue-500 font-normal">(View Details)</span>
+            {{ member.member_name || 'Tidak Diketahui' }}
+            <span v-if="!member.showDetails" class="ml-2 text-xs text-blue-500 font-normal">(Lihat Detail)</span>
           </h3>
           <p class="text-xs text-gray-500 font-mono mb-2">{{ member.member_code }}</p>
           <p class="text-sm text-gray-600 mb-2">{{ member.alamat_snapshot }}</p>
           
           <div v-show="member.showDetails" class="bg-white p-3 rounded mb-4 text-sm mt-2 border shadow-sm animate-fade-in">
-             <div class="mb-1"><strong class="text-gray-700">Phone HT:</strong> <a :href="'tel:'+member.hp_snapshot" class="text-blue-600 hover:underline">{{ member.hp_snapshot || '-' }}</a></div>
+             <div class="mb-1"><strong class="text-gray-700">Telepon HT:</strong> <a :href="'tel:'+member.hp_snapshot" class="text-blue-600 hover:underline">{{ member.hp_snapshot || '-' }}</a></div>
              <div><strong class="text-gray-700">Email:</strong> <a :href="'mailto:'+member.email_snapshot" class="text-blue-600 hover:underline">{{ member.email_snapshot || '-' }}</a></div>
           </div>
           
@@ -48,7 +48,7 @@
             @click="markVisited(member.member_code)" 
             class="btn btn-primary w-full text-sm py-2"
           >
-            Tandai Dikunjungi
+            Tandai Selesai
           </button>
           <button 
             v-if="member.visited === 1 && member.is_approved !== 1" 

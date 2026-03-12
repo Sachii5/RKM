@@ -2,8 +2,8 @@
   <div class="dashboard">
     <div v-if="!auth.isAuthenticated" class="login-container">
       <div class="card glass text-center" style="max-width: 400px; margin: 100px auto;">
-        <h2 class="page-title mb-2">Login Sistem</h2>
-        <p class="text-sm text-gray-500 mb-6">Masukkan kredensial Anda untuk mengakses Sistem Zoning</p>
+        <h2 class="page-title mb-2">Login</h2>
+        <p class="text-sm text-gray-500 mb-6">Masukkan akun Anda untuk mengakses Sistem Rute RKM</p>
         
         <form @submit.prevent="handleLogin">
           <div class="form-group">
@@ -11,7 +11,7 @@
               v-model="form.userid" 
               type="text" 
               class="form-control text-center text-lg uppercase" 
-              placeholder="ID Pengguna (contoh: DND atau ALB)" 
+              placeholder="ID Pengguna (Contoh: DND atau DPT)" 
               required
             />
           </div>
@@ -21,7 +21,7 @@
               v-model="form.password" 
               type="password" 
               class="form-control text-center text-lg" 
-              placeholder="Password" 
+              placeholder="Kata Sandi" 
               required
             />
           </div>
@@ -43,40 +43,40 @@
       <header class="mb-8">
         <h1 class="page-title">Selamat datang, <span class="text-primary">{{ auth.user?.userid }}</span></h1>
         <p class="page-subtitle">
-          Level Akses: <span class="badge badge-warning">{{ roleBahasa }}</span>
+          Akses: <span class="badge badge-warning">{{ roleBahasa }}</span>
         </p>
       </header>
 
       <div class="grid grid-cols-2 gap-6 mb-8">
         
         <div v-if="['ADMIN', 'SUPERVISOR'].includes(auth.role)" class="card bg-gradient-to-br from-indigo-50 to-white">
-          <h2 class="font-bold mb-2">🗺️ Peta Zoning Interaktif</h2>
-          <p class="text-gray-500 text-sm mb-4">Buat zona kunjungan baru menggunakan peta. Pilih mode Radius atau Kecamatan.</p>
+          <h2 class="font-bold mb-2">🗺️ Buat rute RKM</h2>
+          <p class="text-gray-500 text-sm mb-4">Tetapkan area kunjungan melalui peta. Pilih metode Penetapan Radius, Berdasarkan Kecamatan, atau Manual.</p>
           <router-link to="/zoning" class="btn btn-primary">Buka Peta Zoning</router-link>
         </div>
 
         <div v-if="['ADMIN', 'SUPERVISOR'].includes(auth.role)" class="card bg-gradient-to-br from-blue-50 to-white">
-          <h2 class="font-bold mb-2">📋 Daftar Zona Kunjungan</h2>
-          <p class="text-gray-500 text-sm mb-4">Lihat semua zona yang telah dibuat, termasuk progres kunjungan per salesman.</p>
-          <router-link to="/zones" class="btn btn-primary" style="background: #06b6d4;">Lihat Daftar Zona</router-link>
+          <h2 class="font-bold mb-2">📋 Daftar Rute RKM</h2>
+          <p class="text-gray-500 text-sm mb-4">Pantau seluruh area penugasan, termasuk kemajuan pelaksanaan kunjungan setiap MR.</p>
+          <router-link to="/zones" class="btn btn-primary" style="background: #06b6d4;">Lihat Daftar Rute</router-link>
         </div>
         
         <div v-if="auth.role === 'SALESMAN'" class="card bg-gradient-to-br from-green-50 to-white">
           <h2 class="font-bold mb-2">📍 Rute Kunjungan Hari Ini</h2>
-          <p class="text-gray-500 text-sm mb-4">Lihat rute kunjungan harian Anda yang telah dioptimalkan secara otomatis.</p>
+          <p class="text-gray-500 text-sm mb-4">Akses rute kunjungan harian Anda.</p>
           <router-link to="/route" class="btn btn-success">Mulai Kunjungan</router-link>
         </div>
 
         <div v-if="auth.role === 'SALESMAN'" class="card bg-gradient-to-br from-blue-50 to-white">
-          <h2 class="font-bold mb-2">📋 Zona Saya</h2>
-          <p class="text-gray-500 text-sm mb-4">Lihat semua zona kunjungan yang ditetapkan untuk Anda oleh Supervisor.</p>
+          <h2 class="font-bold mb-2">📋 Rute Saya</h2>
+          <p class="text-gray-500 text-sm mb-4">Lihat rincian rute kunjungan yang telah ditetapkan kepada Anda oleh SPV.</p>
           <router-link to="/zones" class="btn btn-primary" style="background: #06b6d4;">Lihat Zona Saya</router-link>
         </div>
 
         <div v-if="auth.role === 'ADMIN'" class="card bg-gradient-to-br from-red-50 to-white">
-          <h2 class="font-bold mb-2 text-red-700">⚠️ Zona Berbahaya</h2>
-          <p class="text-gray-500 text-sm mb-4">Khusus Admin. Reset sistem akan menghapus semua data kunjungan.</p>
-          <router-link to="/reset" class="btn btn-danger">Reset Sistem</router-link>
+          <h2 class="font-bold mb-2 text-red-700">⚠️ Reset rute RKM</h2>
+          <p class="text-gray-500 text-sm mb-4">Akses terbatas untuk Admin. Operasi Atur Ulang Sistem akan menghapus seluruh data yang tersimpan.</p>
+          <router-link to="/reset" class="btn btn-danger">Atur Ulang Sistem</router-link>
         </div>
 
       </div>
@@ -118,7 +118,7 @@ const handleLogin = async () => {
       router.push('/')
     }
   } catch (err) {
-    error.value = err.response?.data?.error || 'Login Gagal. Periksa kembali ID dan password Anda.'
+    error.value = err.response?.data?.error || 'Proses Masuk Gagal. Silakan periksa kembali ID Pengguna dan Kata Sandi Anda.'
   } finally {
     loading.value = false
   }

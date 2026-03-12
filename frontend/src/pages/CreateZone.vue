@@ -1,22 +1,22 @@
 <template>
   <div class="create-zone">
     <header class="mb-8">
-      <h1 class="page-title">Zone Assignment</h1>
-      <p class="page-subtitle">Find members and assign today's visiting schedule</p>
+      <h1 class="page-title">Rute RKM</h1>
+      <p class="page-subtitle">Cari member dan tugaskan jadwal kunjungan hari ini</p>
     </header>
 
     <div class="grid grid-cols-2 gap-6 mb-8">
       <!-- Radius Form -->
       <div class="card">
-        <h2 class="text-lg font-bold mb-4 text-primary">Haversine Radius Search</h2>
+        <h2 class="text-lg font-bold mb-4 text-primary">Pencarian Berdasarkan Radius Area</h2>
         <form @submit.prevent="searchRadius">
           <div class="grid grid-cols-2 gap-4">
             <div class="form-group">
-              <label class="form-label">Latitude</label>
+              <label class="form-label">Garis Lintang (Latitude)</label>
               <input v-model="form.lat" type="number" step="any" required class="form-control" placeholder="-6.80961" />
             </div>
             <div class="form-group">
-              <label class="form-label">Longitude</label>
+              <label class="form-label">Garis Bujur (Longitude)</label>
               <input v-model="form.lng" type="number" step="any" required class="form-control" placeholder="108.4681" />
             </div>
           </div>
@@ -24,20 +24,20 @@
             <label class="form-label">Radius (km)</label>
             <input v-model="form.radius" type="number" step="0.1" min="0.1" required class="form-control" placeholder="5" />
           </div>
-          <button type="submit" class="btn btn-primary" :disabled="loading">Search by Radius</button>
+          <button type="submit" class="btn btn-primary" :disabled="loading">Cari Berdasarkan Radius</button>
         </form>
       </div>
 
       <!-- Kelurahan Form -->
       <div class="card">
-        <h2 class="text-lg font-bold mb-4 text-secondary">Kelurahan Search</h2>
+        <h2 class="text-lg font-bold mb-4 text-secondary">Pencarian Berdasarkan Kelurahan</h2>
         <form @submit.prevent="searchKelurahan">
           <div class="form-group">
-            <label class="form-label">Kelurahan Name</label>
-            <input v-model="form.kelurahan" type="text" required class="form-control uppercase" placeholder="e.g. HARJAMUKTI" />
+            <label class="form-label">Nama Kelurahan</label>
+            <input v-model="form.kelurahan" type="text" required class="form-control uppercase" placeholder="Cth: HARJAMUKTI" />
           </div>
           <button type="submit" class="btn btn-primary" :disabled="loading" style="background-color: var(--pk-secondary);">
-            Search by Kelurahan
+            Cari Berdasarkan Kelurahan
           </button>
         </form>
       </div>
@@ -47,14 +47,14 @@
     <div v-if="results.length > 0" class="card mt-6 fade-in glass">
       <div class="flex justify-between items-center mb-6">
         <div>
-          <h3 class="font-bold text-lg text-primary">Search Results</h3>
+          <h3 class="font-bold text-lg text-primary">Hasil Pencarian</h3>
           <p class="text-sm text-gray-500">
-            Found {{ totalFound }} members. Limit is 12 per day.
-            <span v-if="requiresConfirmation" class="badge badge-warning ml-2">Override Required (>12)</span>
+            Ditemukan {{ totalFound }} member. Batas harian adalah 12 member.
+            <span v-if="requiresConfirmation" class="badge badge-warning ml-2">Butuh Persetujuan (>12)</span>
           </p>
         </div>
         <button @click="assignVisits" class="btn btn-success" :disabled="loading">
-          Assign {{ results.length }} Members to Today
+          Tugaskan {{ results.length }} Member untuk Hari Ini
         </button>
       </div>
 
@@ -62,11 +62,11 @@
         <table class="table">
           <thead>
             <tr>
-              <th>Member Code</th>
-              <th>Name</th>
+              <th>Kode Member</th>
+              <th>Nama</th>
               <th>Kelurahan</th>
-              <th>Phone</th>
-              <th v-if="activeTab === 'radius'">Distance (km)</th>
+              <th>Telepon</th>
+              <th v-if="activeTab === 'radius'">Jarak (km)</th>
             </tr>
           </thead>
           <tbody>
@@ -84,7 +84,7 @@
     
     <!-- Empty State -->
     <div v-else-if="searched && results.length === 0" class="card mt-6 text-center text-gray-500 py-12">
-      No members found matching your criteria.
+      Tidak ada member yang ditemukan sesuai dengan kriteria yang Anda berikan.
     </div>
   </div>
 </template>
@@ -130,7 +130,7 @@ const searchRadius = async () => {
     requiresConfirmation.value = res.data.requiresConfirmation
     totalFound.value = res.data.totalFound
   } catch (err) {
-    alert(err.response?.data?.error || 'Search error')
+    alert(err.response?.data?.error || 'Pencarian gagal dilakukan')
   } finally {
     loading.value = false
   }
@@ -151,7 +151,7 @@ const searchKelurahan = async () => {
     requiresConfirmation.value = res.data.requiresConfirmation
     totalFound.value = res.data.totalFound
   } catch (err) {
-    alert(err.response?.data?.error || 'Search error')
+    alert(err.response?.data?.error || 'Pencarian gagal dilakukan')
   } finally {
     loading.value = false
   }
@@ -159,7 +159,7 @@ const searchKelurahan = async () => {
 
 const assignVisits = async () => {
   if (requiresConfirmation.value) {
-    const confirm = window.confirm(`You are assigning ${results.value.length} members which is above the maximum limit of 12. Are you sure?`)
+    const confirm = window.confirm(`Anda menugaskan ${results.value.length} member yang melampaui batas maksimal harian sebanyak 12 member. Apakah Anda yakin ingin melanjutkan?`)
     if (!confirm) return
   }
 
@@ -171,10 +171,10 @@ const assignVisits = async () => {
       zone_type: activeTab.value,
       zone_value: currentZoneValue.value
     })
-    alert('Visits assigned successfully!')
+    alert('Penugasan rute kunjungan berhasil ditetapkan!')
     router.push('/visits')
   } catch (err) {
-    alert(err.response?.data?.error || 'Assignment error')
+    alert(err.response?.data?.error || 'Terjadi kesalahan pada saat proses penugasan')
   } finally {
     loading.value = false
   }

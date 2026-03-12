@@ -1,18 +1,18 @@
 <template>
   <div class="reset-page max-w-2xl mx-auto">
     <header class="mb-8">
-      <h1 class="page-title text-red-600">⚠️ Reset Sistem</h1>
-      <p class="page-subtitle text-red-500">ZONA BERBAHAYA: Hanya untuk Admin. Bertindaklah dengan hati-hati.</p>
+      <h1 class="page-title text-red-600">⚠️ Atur Ulang Sistem</h1>
+      <p class="page-subtitle text-red-500">ZONA RISIKO TINGGI: Akses terbatas untuk Admin. Harap berhati-hati.</p>
     </header>
 
     <div class="card glass" style="border-color: rgba(239,68,68,0.3); background: rgba(254, 242, 242, 0.8);">
-      <h2 class="font-bold text-lg mb-4 text-red-700">Reset Data Kunjungan</h2>
+      <h2 class="font-bold text-lg mb-4 text-red-700">Atur Ulang Data Kunjungan</h2>
       <div class="text-sm text-gray-700 mb-6">
-        Menjalankan reset akan secara permanen melakukan:
+        Proses ini akan secara permanen menempuh tindakan berikut:
         <ul class="list-disc pl-6 mt-2 space-y-1">
-          <li>Backup lengkap database SQLite <code>visits.db</code> ke folder <code>/backup/</code>.</li>
-          <li>Penghapusan semua data zona, member, dan log kunjungan aktif saat ini.</li>
-          <li>Pembersihan file backup lama yang berusia lebih dari 365 hari.</li>
+          <li>Pencadangan (backup) lengkap basis data SQLite <code>visits.db</code> ke direktori <code>/backup/</code>.</li>
+          <li>Penghapusan seluruh data penugasan area, rincian pelanggan, dan catatan log kunjungan aktif saat ini.</li>
+          <li>Pembersihan berkas cadangan tersimpan yang telah melewati masa simpan 365 hari.</li>
         </ul>
       </div>
 
@@ -30,8 +30,8 @@
         :disabled="loading"
         style="width: 100%; font-size: 1rem; padding: 16px;"
       >
-        <span v-if="!loading">Jalankan Reset Data</span>
-        <span v-else>Memproses Reset...</span>
+        <span v-if="!loading">Jalankan Atur Ulang Data</span>
+        <span v-else>Memproses...</span>
       </button>
     </div>
   </div>
@@ -48,7 +48,7 @@ const successMessage = ref('')
 const errorMessage = ref('')
 
 const confirmReset = async () => {
-  const confirm = window.confirm('PERINGATAN: Tindakan ini akan menghapus semua zona dan data kunjungan aktif untuk semua salesman, dengan backup otomatis dibuat terlebih dahulu. Lanjutkan?')
+  const confirm = window.confirm('PERINGATAN: Tindakan ini akan menghapus seluruh data penugasan area dan kunjungan aktif dari semua salesman, dengan pencadangan (backup) otomatis dibuat sebelumnya. Apakah Anda yakin ingin melanjutkan?')
   if (!confirm) return
 
   loading.value = true
@@ -59,9 +59,9 @@ const confirmReset = async () => {
     const res = await axios.post('/api/reset', {}, {
       headers: { Authorization: `Bearer ${auth.token}` }
     })
-    successMessage.value = `Reset berhasil. Backup ${res.data.backupFilename} telah dibuat.`
+    successMessage.value = `Sistem berhasil diatur ulang. Cadangan data ${res.data.backupFilename} telah diamankan.`
   } catch (err) {
-    errorMessage.value = err.response?.data?.error || 'Reset gagal dijalankan oleh server.'
+    errorMessage.value = err.response?.data?.error || 'Kegagalan menjalankan proses atur ulang pada server.'
   } finally {
     loading.value = false
   }

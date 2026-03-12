@@ -2,9 +2,9 @@
   <div class="app-container">
     <aside class="sidebar" v-if="auth.isAuthenticated">
       <div class="sidebar-header">
-        <h1>Zoning Map V2</h1>
+        <h1>Sistem RKM</h1>
         <div class="mt-2 text-sm text-gray-500">
-          Pengguna: <span class="badge badge-success">{{ auth.user?.userid }}</span>
+          User : <span class="badge badge-success">{{ auth.user?.userid }}</span>
         </div>
       </div>
       <nav class="nav-links">
@@ -15,10 +15,10 @@
         <!-- Tautan Manajemen -->
         <template v-if="['ADMIN', 'SUPERVISOR'].includes(auth.role)">
           <div class="nav-item">
-            <router-link to="/zoning" class="nav-link">🗺️ Peta Zoning Interaktif</router-link>
+            <router-link to="/zoning" class="nav-link">🗺️ Rute RKM</router-link>
           </div>
           <div class="nav-item">
-            <router-link to="/zones" class="nav-link">📋 Daftar Zona Kunjungan</router-link>
+            <router-link to="/zones" class="nav-link">📋 Daftar Rute RKM</router-link>
           </div>
         </template>
 
@@ -29,6 +29,9 @@
           </div>
           <div class="nav-item">
             <router-link to="/zones" class="nav-link">📋 Zona Saya</router-link>
+          </div>
+          <div class="nav-item">
+            <router-link to="/change-password" class="nav-link">🔑 Ganti Kata Sandi</router-link>
           </div>
         </template>
 

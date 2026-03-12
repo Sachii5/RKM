@@ -12,7 +12,7 @@ const routes = [
   { 
     path: '/change-password', 
     component: ChangePassword,
-    meta: { requiresAuth: true, requiresSalesman: true }
+    meta: { requiresAuth: true, allowedRoles: ['SALESMAN'] }
   },
   { 
     path: '/zoning', 

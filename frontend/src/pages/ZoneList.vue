@@ -32,8 +32,8 @@
     </div>
 
     <div v-else-if="zones.length === 0" class="card text-center py-12 text-gray-400">
-      <p class="text-lg mb-2">⚠️ Belum ada zona aktif yang ditemukan.</p>
-      <p class="text-sm">{{ isManagement ? 'Silakan buat zona baru melalui menu Peta Zoning Interaktif.' : 'Supervisor Anda belum menetapkan zona untuk Anda.' }}</p>
+      <p class="text-lg mb-2">⚠️ Belum ada rute aktif yang ditemukan.</p>
+      <p class="text-sm">{{ isManagement ? 'Silakan buat zona baru melalui menu Peta Rute RKM.' : 'Supervisor Anda belum menetapkan zona untuk Anda.' }}</p>
     </div>
 
     <!-- Zone cards grid -->
