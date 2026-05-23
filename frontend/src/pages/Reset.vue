@@ -1,7 +1,7 @@
 <template>
   <div class="reset-page max-w-2xl mx-auto">
     <header class="mb-8">
-      <h1 class="page-title text-red-600">⚠️ Atur Ulang Sistem</h1>
+      <h1 class="page-title text-red-600"><i class="fa-solid fa-triangle-exclamation"></i> Atur Ulang Sistem</h1>
       <p class="page-subtitle text-red-500">ZONA RISIKO TINGGI: Akses terbatas untuk Admin. Harap berhati-hati.</p>
     </header>
 

@@ -9,43 +9,43 @@
       </div>
       <nav class="nav-links">
         <div class="nav-item">
-          <router-link to="/" class="nav-link">🏠 Beranda</router-link>
+          <router-link to="/" class="nav-link"><i class="fa-solid fa-house fa-fw"></i> Beranda</router-link>
         </div>
 
         <!-- Tautan Manajemen -->
         <template v-if="['ADMIN', 'SUPERVISOR'].includes(auth.role)">
           <div class="nav-item">
-            <router-link to="/zoning" class="nav-link">🗺️ Rute RKM</router-link>
+            <router-link to="/zoning" class="nav-link"><i class="fa-solid fa-map-location-dot fa-fw"></i> Rute RKM</router-link>
           </div>
           <div class="nav-item">
-            <router-link to="/zones" class="nav-link">📋 Daftar Rute RKM</router-link>
+            <router-link to="/zones" class="nav-link"><i class="fa-solid fa-clipboard-list fa-fw"></i> Daftar Rute RKM</router-link>
           </div>
         </template>
 
         <!-- Tautan Salesman -->
         <template v-if="auth.role === 'SALESMAN' && !auth.isFirstLogin">
           <div class="nav-item">
-            <router-link to="/route" class="nav-link">📍 Rute Kunjungan Hari Ini</router-link>
+            <router-link to="/route" class="nav-link"><i class="fa-solid fa-location-dot fa-fw"></i> Rute Kunjungan Hari Ini</router-link>
           </div>
           <div class="nav-item">
-            <router-link to="/zones" class="nav-link">📋 Zona Saya</router-link>
+            <router-link to="/zones" class="nav-link"><i class="fa-solid fa-clipboard-list fa-fw"></i> Zona Saya</router-link>
           </div>
           <div class="nav-item">
-            <router-link to="/change-password" class="nav-link">🔑 Ganti Kata Sandi</router-link>
+            <router-link to="/change-password" class="nav-link"><i class="fa-solid fa-key fa-fw"></i> Ganti Kata Sandi</router-link>
           </div>
         </template>
 
         <!-- Tautan Admin -->
         <template v-if="auth.role === 'ADMIN'">
           <div class="nav-item">
-            <router-link to="/reset" class="nav-link text-red-500 hover:text-red-700 font-bold">⚠️ Reset Sistem</router-link>
+            <router-link to="/reset" class="nav-link text-red-500 hover:text-red-700 font-bold"><i class="fa-solid fa-triangle-exclamation fa-fw"></i> Reset Sistem</router-link>
           </div>
         </template>
 
       </nav>
       
       <div style="margin-top: auto; padding: 20px;">
-        <button @click="logout" class="btn btn-outline" style="width: 100%;">🔒 Keluar</button>
+        <button @click="logout" class="btn btn-outline" style="width: 100%;"><i class="fa-solid fa-right-from-bracket fa-fw"></i> Keluar</button>
       </div>
     </aside>
 

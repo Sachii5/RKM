@@ -11,8 +11,8 @@ const PORT = process.env.PORT || 3000;
 // Security: Restrict CORS to frontend origins (localhost + LAN)
 const allowedOrigins = [
   'http://localhost:5173',
-  'http://172.26.11.6:5173',
-  'https://edp-2k.tailcd68fc.ts.net'
+  'http://172.26.11.12:5173',
+  'https://server-spi-2k.tailcd68fc.ts.net'
 ];
 app.use(cors({
   origin: function (origin, callback) {

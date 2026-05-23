@@ -79,7 +79,7 @@
           <table class="preview-table">
             <thead>
               <tr>
-                <th class="col-chk">✓</th>
+                <th class="col-chk"><i class="fa-solid fa-check"></i></th>
                 <th class="col-no">No</th>
                 <th class="col-name">Nama Member</th>
                 <th class="col-code">Kode</th>
@@ -97,6 +97,8 @@
                 <td class="col-name">
                   {{ m.cus_namamember }}
                   <span v-if="m.is_extra" class="badge-outside">LUAR</span>
+                  <span v-if="m.is_sleeper" class="badge-sleeper">SLEEPER</span>
+                  <span v-if="unvisitedMemberCodes.has(m.cus_kodemember)" class="badge-unvisited">BELUM DIKUNJUNGI</span>
                 </td>
                 <td class="col-code">{{ m.cus_kodemember }}</td>
                 <td class="col-dist">{{ m.distance_km ? m.distance_km.toFixed(1) + ' km' : '-' }}</td>
@@ -116,7 +118,34 @@
     </div>
 
     <!-- Map Container -->
-    <div id="leaflet-map" class="map-container flex-1 relative" style="height: 100vh; min-height: 500px; z-index: 1;"></div>
+    <div class="map-wrapper flex-1 relative" style="height: 100vh; min-height: 500px; z-index: 1;">
+      <div id="leaflet-map" class="w-full h-full"></div>
+      
+      <!-- Map Legend -->
+      <div class="map-legend">
+        <div class="legend-title">Keterangan Pin</div>
+        <div class="legend-item">
+          <img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-grey.png" alt="Grey" /> 
+          <span>Belum dipilih</span>
+        </div>
+        <div class="legend-item">
+          <img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png" alt="Green" /> 
+          <span>Terpilih ke zona ini</span>
+        </div>
+        <div class="legend-item">
+          <img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png" alt="Blue" /> 
+          <span>Sudah di zona lain</span>
+        </div>
+        <div class="legend-item">
+          <img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-gold.png" alt="Yellow" /> 
+          <span>Pernah dipilih, belum dikunjungi</span>
+        </div>
+        <div class="legend-item">
+          <img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png" alt="Red" /> 
+          <span>Member Sleeper</span>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -168,6 +197,7 @@ const form = ref({
 // Data State
 const allMembers = ref([])
 const zonedMemberCodes = ref(new Set())
+const unvisitedMemberCodes = ref(new Set())
 const previewResult = ref(null)
 const selectedMemberIds = ref([])
 const loading = ref(false)
@@ -214,7 +244,14 @@ const fetchMembers = async () => {
       })
     ])
     
-    zonedMemberCodes.value = new Set(zonedRes.data)
+    // Compatibility if backend returns array or object
+    if (Array.isArray(zonedRes.data)) {
+      zonedMemberCodes.value = new Set(zonedRes.data)
+      unvisitedMemberCodes.value = new Set()
+    } else {
+      zonedMemberCodes.value = new Set(zonedRes.data.zoned || [])
+      unvisitedMemberCodes.value = new Set(zonedRes.data.unvisited || [])
+    }
 
     const parsed = membersRes.data
       .filter(m => m.cus_nosalesman === form.value.salesman)
@@ -335,8 +372,8 @@ const drawMapEntities = (skipFitBounds = false) => {
     if (form.value.radius > 0) {
       circleLayer = L.circle([form.value.lat, form.value.lng], {
         radius: form.value.radius * 1000,
-        color: '#4F46E5',
-        fillColor: '#4F46E5',
+        color: '#007BFF',
+        fillColor: '#007BFF',
         fillOpacity: 0.1
       }).addTo(map)
     }
@@ -353,24 +390,27 @@ const drawMapEntities = (skipFitBounds = false) => {
     previewResult.value.members = allMembers.value.filter(m => selectedSet.has(m.cus_kodemember))
   }
 
-  // 3. Define 3 pin groups: green (selected), grey (not selected), blue (already zoned)
+  // 3. Define 4 pin groups: green (selected), grey (not selected), blue (already zoned), orange (unvisited)
   let dGrey = []
   let dBlue = []
   let dGreen = []
+  let dOrange = []
 
   if (previewResult.value) {
     // Any member that is selected (checked) → green, regardless of origin
     const selectedSet = new Set(selectedMemberIds.value)
     dGreen = allMembers.value.filter(m => selectedSet.has(m.cus_kodemember))
     
-    // Remaining → blue (already zoned) or grey (available)
+    // Remaining → blue (already zoned), orange (unvisited) or grey (available)
     const rest = allMembers.value.filter(m => !selectedSet.has(m.cus_kodemember))
     dBlue = rest.filter(m => zonedMemberCodes.value.has(m.cus_kodemember))
-    dGrey = rest.filter(m => !zonedMemberCodes.value.has(m.cus_kodemember))
+    dOrange = rest.filter(m => unvisitedMemberCodes.value.has(m.cus_kodemember))
+    dGrey = rest.filter(m => !zonedMemberCodes.value.has(m.cus_kodemember) && !unvisitedMemberCodes.value.has(m.cus_kodemember))
   } else {
     // No preview yet
     dBlue = allMembers.value.filter(m => zonedMemberCodes.value.has(m.cus_kodemember))
-    dGrey = allMembers.value.filter(m => !zonedMemberCodes.value.has(m.cus_kodemember))
+    dOrange = allMembers.value.filter(m => unvisitedMemberCodes.value.has(m.cus_kodemember))
+    dGrey = allMembers.value.filter(m => !zonedMemberCodes.value.has(m.cus_kodemember) && !unvisitedMemberCodes.value.has(m.cus_kodemember))
   }
 
   // Global handler for popup button clicks (Leaflet popups are raw HTML, no Vue bindings)
@@ -400,12 +440,12 @@ const drawMapEntities = (skipFitBounds = false) => {
       if (isSelected) {
         html += `<button onclick="window.__zoningAction('${m.cus_kodemember}','remove')" 
           style="width:100%;padding:6px 0;border:none;border-radius:6px;background:#ef4444;color:#fff;font-weight:600;font-size:12px;cursor:pointer;">
-          ✕ Hapus dari Zona
+          <i class="fa-solid fa-xmark"></i> Hapus dari Zona
         </button>`
       } else {
         html += `<button onclick="window.__zoningAction('${m.cus_kodemember}','add')" 
           style="width:100%;padding:6px 0;border:none;border-radius:6px;background:#10b981;color:#fff;font-weight:600;font-size:12px;cursor:pointer;">
-          ＋ Tambah ke Zona
+          <i class="fa-solid fa-plus"></i> Tambah ke Zona
         </button>`
       }
     }
@@ -414,20 +454,31 @@ const drawMapEntities = (skipFitBounds = false) => {
     return html
   }
 
-  // Draw markers — only 3 colors
+  // Draw markers
   dBlue.forEach(m => {
+    const label = m.is_sleeper ? '<i class="fa-solid fa-circle" style="color: blue;"></i> Sudah masuk zona lain (Sleeper)' : '<i class="fa-solid fa-circle" style="color: blue;"></i> Sudah masuk zona lain'
     L.marker([m.lat, m.lng], { icon: icons.blue })
-      .bindPopup(buildPopup(m, '🔵 Sudah masuk zona lain'))
+      .bindPopup(buildPopup(m, label))
+      .addTo(markersLayer)
+  })
+  dOrange.forEach(m => {
+    const icon = m.is_sleeper ? icons.red : icons.yellow
+    const label = m.is_sleeper ? '<i class="fa-solid fa-circle" style="color: gold;"></i> Pernah dipilih, belum dikunjungi (Sleeper)' : '<i class="fa-solid fa-circle" style="color: gold;"></i> Pernah dipilih, belum dikunjungi'
+    L.marker([m.lat, m.lng], { icon })
+      .bindPopup(buildPopup(m, label))
       .addTo(markersLayer)
   })
   dGrey.forEach(m => {
-    L.marker([m.lat, m.lng], { icon: icons.grey })
-      .bindPopup(buildPopup(m, '⚪ Belum dipilih'))
+    const icon = m.is_sleeper ? icons.red : icons.grey
+    const label = m.is_sleeper ? '<i class="fa-solid fa-circle" style="color: red;"></i> Belum dipilih (Sleeper)' : '<i class="fa-regular fa-circle"></i> Belum dipilih'
+    L.marker([m.lat, m.lng], { icon })
+      .bindPopup(buildPopup(m, label))
       .addTo(markersLayer)
   })
   dGreen.forEach(m => {
+    const label = m.is_sleeper ? '<i class="fa-solid fa-circle" style="color: green;"></i> Terpilih ke zona (Sleeper)' : '<i class="fa-solid fa-circle" style="color: green;"></i> Terpilih ke zona'
     L.marker([m.lat, m.lng], { icon: icons.green })
-      .bindPopup(buildPopup(m, '🟢 Terpilih ke zona'))
+      .bindPopup(buildPopup(m, label))
       .addTo(markersLayer)
   })
   
@@ -538,6 +589,60 @@ watch(() => form.value.radius, () => drawMapEntities())
   margin-left: 4px;
   vertical-align: middle;
 }
+.badge-sleeper {
+  display: inline-block;
+  font-size: 9px;
+  background: #fecaca;
+  color: #991b1b;
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.badge-unvisited {
+  display: inline-block;
+  font-size: 9px;
+  background: #ffedd5;
+  color: #c2410c;
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* Map Legend */
+.map-legend {
+  position: absolute;
+  bottom: 30px;
+  right: 10px;
+  background: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  z-index: 9999;
+  font-size: 12px;
+  color: #374151;
+}
+.legend-title {
+  font-weight: 700;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 6px;
+  color: #111827;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.legend-item:last-child {
+  margin-bottom: 0;
+}
+.legend-item img {
+  width: 14px;
+  height: 22px;
+  margin-right: 10px;
+}
 
 /* Tablet */
 @media (max-width: 1024px) {
@@ -550,7 +655,7 @@ watch(() => form.value.radius, () => drawMapEntities())
     max-height: 50vh;
     overflow-y: auto;
   }
-  #leaflet-map {
+  .map-wrapper {
     height: 50vh !important;
     min-height: 350px !important;
   }
@@ -565,11 +670,11 @@ watch(() => form.value.radius, () => drawMapEntities())
   .control-panel {
     width: 100% !important;
     padding: 1rem !important;
-    max-height: 45vh;
+    max-height: none;
   }
-  #leaflet-map {
-    height: 55vh !important;
-    min-height: 300px !important;
+  .map-wrapper {
+    height: 400px !important;
+    min-height: auto !important;
   }
   .page-title {
     font-size: 1.25rem;
@@ -582,5 +687,24 @@ watch(() => form.value.radius, () => drawMapEntities())
     font-size: 0.7rem;
   }
   .col-name { min-width: 90px; }
+  .map-legend {
+    bottom: 10px;
+    right: 10px;
+    padding: 6px 10px;
+    font-size: 9px;
+    max-width: 160px;
+  }
+  .legend-title {
+    margin-bottom: 5px;
+    padding-bottom: 3px;
+  }
+  .legend-item {
+    margin-bottom: 4px;
+  }
+  .legend-item img {
+    width: 10px;
+    height: 16px;
+    margin-right: 6px;
+  }
 }
 </style>

@@ -1,12 +1,12 @@
 :root {
   /* Colors */
-  --pk-bg: #EAEFF5;       /* Light, slightly cool grayish-blue for calm background */
+  --pk-bg: #FFFFFF;       /* Main color: White */
   --pk-surface: #FFFFFF;
-  --pk-surface-dim: #F4F7FB;
-  --pk-primary: #4F46E5;  /* Vibrant Indigo */
-  --pk-primary-hover: #4338CA;
-  --pk-secondary: #06B6D4; /* Vibrant Cyan */
-  --pk-secondary-hover: #0891B2;
+  --pk-surface-dim: #F3F4F6; /* Third color: Light Gray */
+  --pk-primary: #007BFF;  /* Secondary color: Blue */
+  --pk-primary-hover: #0056B3;
+  --pk-secondary: #E5E7EB; /* Light Gray variation */
+  --pk-secondary-hover: #D1D5DB;
   --pk-success: #10B981;
   --pk-warning: #F59E0B;
   --pk-danger: #EF4444;

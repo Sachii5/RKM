@@ -62,7 +62,7 @@
         </div>
         
         <div v-if="auth.role === 'SALESMAN'" class="card bg-gradient-to-br from-green-50 to-white">
-          <h2 class="font-bold mb-2">📍 Rute Kunjungan Hari Ini</h2>
+          <h2 class="font-bold mb-2"><i class="fa-solid fa-location-dot"></i> Rute Kunjungan Hari Ini</h2>
           <p class="text-gray-500 text-sm mb-4">Akses rute kunjungan harian Anda.</p>
           <router-link to="/route" class="btn btn-success">Mulai Kunjungan</router-link>
         </div>
@@ -74,7 +74,7 @@
         </div>
 
         <div v-if="auth.role === 'ADMIN'" class="card bg-gradient-to-br from-red-50 to-white">
-          <h2 class="font-bold mb-2 text-red-700">⚠️ Reset rute RKM</h2>
+          <h2 class="font-bold mb-2 text-red-700"><i class="fa-solid fa-triangle-exclamation"></i> Reset rute RKM</h2>
           <p class="text-gray-500 text-sm mb-4">Akses terbatas untuk Admin. Operasi Atur Ulang Sistem akan menghapus seluruh data yang tersimpan.</p>
           <router-link to="/reset" class="btn btn-danger">Atur Ulang Sistem</router-link>
         </div>

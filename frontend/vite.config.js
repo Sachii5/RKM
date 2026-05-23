@@ -6,7 +6,8 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     allowedHosts: [
-      'edp-2k.tailcd68fc.ts.net'
+      'edp-2k.tailcd68fc.ts.net',
+      'server-spi-2k.tailcd68fc.ts.net'
     ],
     proxy: {
       '/api': {

@@ -59,7 +59,7 @@
             Batalkan Kunjungan
           </button>
           <div v-else-if="member.is_approved === 1" class="text-center text-green-600 text-sm font-bold py-2">
-            ✓ Kunjungan Telah Disetujui
+            <i class="fa-solid fa-circle-check"></i> Kunjungan Telah Disetujui
           </div>
         </div>
       </div>
@@ -160,7 +160,7 @@ const drawRoute = () => {
   const polyCoords = activeCoords.value.map(m => [m.lat, m.lng])
   if (polyCoords.length > 1) {
     L.polyline(polyCoords, {
-      color: '#4F46E5',
+      color: '#007BFF',
       weight: 3,
       opacity: 0.8
     }).addTo(routeLayer)

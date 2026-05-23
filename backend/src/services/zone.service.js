@@ -10,13 +10,16 @@ const checkConflict = (salesmanCode, scheduledDate) => {
   return !!existing;
 };
 
-// Helper: Get all member codes that are already assigned to any active zone
+// Helper: Get all member codes that are already assigned to any active zone AND have been visited/approved
 const getAlreadyZonedMemberCodes = () => {
   const rows = db.prepare(`
-    SELECT DISTINCT zm.member_code 
+    SELECT zm.member_code, IFNULL(MAX(vl.visited), 0) as max_visited
     FROM zone_members zm
     JOIN zones z ON z.id = zm.zone_id
+    LEFT JOIN visit_logs vl ON vl.zone_id = zm.zone_id AND vl.member_code = zm.member_code
     WHERE z.status = 'active'
+    GROUP BY zm.member_code
+    HAVING max_visited > 0
   `).all();
   return new Set(rows.map(r => r.member_code));
 };

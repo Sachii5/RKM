@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { getMembers } = require('../db/pg');
+const { getMembers, getMemberOrdersByDate } = require('../db/pg');
 const db = require('../db/sqlite');
 const { getZoneByRadius, getZoneByKelurahan, createZoneTransaction, softDeleteZone } = require('../services/zone.service');
 const { getTodayRoute } = require('../services/route.service');
@@ -182,12 +182,22 @@ router.get('/zones/mine', authenticate, requireSalesman, (req, res) => {
 router.get('/zones/member-codes', authenticate, requireSupervisorOrAbove, (req, res) => {
   try {
     const rows = db.prepare(`
-      SELECT DISTINCT zm.member_code 
+      SELECT zm.member_code, IFNULL(MAX(vl.visited), 0) as max_visited
       FROM zone_members zm
       JOIN zones z ON z.id = zm.zone_id
+      LEFT JOIN visit_logs vl ON vl.zone_id = zm.zone_id AND vl.member_code = zm.member_code
       WHERE z.status = 'active'
+      GROUP BY zm.member_code
     `).all();
-    res.json(rows.map(r => r.member_code));
+    
+    const zoned = [];
+    const unvisited = [];
+    rows.forEach(r => {
+      if (r.max_visited > 0) zoned.push(r.member_code);
+      else unvisited.push(r.member_code);
+    });
+    
+    res.json({ zoned, unvisited });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -273,17 +283,35 @@ router.post('/visit/cancel', authenticate, requireSalesman, (req, res) => {
 });
 
 // GET /api/zone/:id/visits
-router.get('/zone/:id/visits', authenticate, requireSupervisorOrAbove, (req, res) => {
+router.get('/zone/:id/visits', authenticate, requireSupervisorOrAbove, async (req, res) => {
   const zoneId = req.params.id;
   if (!isPositiveInteger(zoneId)) return res.status(400).json({ error: 'ID zona tidak valid' });
 
   try {
+    const zone = db.prepare('SELECT scheduled_date FROM zones WHERE id = ?').get(Number(zoneId));
+    if (!zone) return res.status(404).json({ error: 'Zona tidak ditemukan' });
+
     const visits = db.prepare(`
       SELECT zm.member_code, zm.member_name, v.visited, v.visited_at, v.is_approved, v.approved_at
       FROM zone_members zm
       JOIN visit_logs v ON zm.zone_id = v.zone_id AND zm.member_code = v.member_code
       WHERE zm.zone_id = ?
     `).all(Number(zoneId));
+
+    if (visits.length > 0) {
+      const memberCodes = visits.map(v => v.member_code);
+      const orders = await getMemberOrdersByDate(zone.scheduled_date, memberCodes);
+      
+      const orderMap = {};
+      orders.forEach(o => {
+        orderMap[o.kode_member] = o.harga_total_item;
+      });
+
+      visits.forEach(v => {
+        v.harga_total_item = orderMap[v.member_code] || 0;
+      });
+    }
+
     res.json(visits);
   } catch (err) {
     console.error('zone/visits error:', err.message);
