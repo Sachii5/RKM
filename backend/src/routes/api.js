@@ -2,11 +2,12 @@ const express = require('express');
 const router = express.Router();
 
 const { getMembers, getMemberOrdersByDate } = require('../db/pg');
-const db = require('../db/sqlite');
+const db = require('../db/pg_ops');
 const { getZoneByRadius, getZoneByKelurahan, createZoneTransaction, softDeleteZone } = require('../services/zone.service');
 const { getTodayRoute } = require('../services/route.service');
 const { performResetAndBackup } = require('../services/backup.service');
 const { isValidSalesman, getTodayDateString } = require('../utils/helpers');
+const { getMonthlyEvaluation } = require('../controllers/analytics.controller');
 
 const authenticate = require('../middleware/auth.middleware');
 const { requireSupervisorOrAbove, requireSalesman, requireAdmin } = require('../middleware/role.middleware');
@@ -72,7 +73,7 @@ router.post('/zone/kelurahan', authenticate, requireSupervisorOrAbove, async (re
 });
 
 // POST /api/zone/create
-router.post('/zone/create', authenticate, requireSupervisorOrAbove, (req, res) => {
+router.post('/zone/create', authenticate, requireSupervisorOrAbove, async (req, res) => {
   const { salesman_code, scheduled_date, zone_type, members, center_lat, center_lng, radius_km, kelurahan } = req.body;
   
   if (!Array.isArray(members) || members.length === 0 || !salesman_code || !scheduled_date) {
@@ -92,7 +93,7 @@ router.post('/zone/create', authenticate, requireSupervisorOrAbove, (req, res) =
   }
 
   try {
-    const zoneId = createZoneTransaction(
+    const zoneId = await createZoneTransaction(
       req.user.userid, 
       req.user.role, 
       salesman_code.toUpperCase(), 
@@ -116,13 +117,13 @@ router.post('/zone/create', authenticate, requireSupervisorOrAbove, (req, res) =
 });
 
 // DELETE /api/zone/:id
-router.delete('/zone/:id', authenticate, requireSupervisorOrAbove, (req, res) => {
+router.delete('/zone/:id', authenticate, requireSupervisorOrAbove, async (req, res) => {
   const zoneId = req.params.id;
   if (!isPositiveInteger(zoneId)) {
     return res.status(400).json({ error: 'ID zona tidak valid' });
   }
   try {
-    softDeleteZone(req.user.userid, req.user.role, Number(zoneId));
+    await softDeleteZone(req.user.userid, req.user.role, Number(zoneId));
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -130,70 +131,76 @@ router.delete('/zone/:id', authenticate, requireSupervisorOrAbove, (req, res) =>
 });
 
 // GET /api/zones - List all zones (Admin/Supervisor)
-router.get('/zones', authenticate, requireSupervisorOrAbove, (req, res) => {
+router.get('/zones', authenticate, requireSupervisorOrAbove, async (req, res) => {
   try {
     const { salesman_code } = req.query;
     let query = `
       SELECT z.id, z.salesman_code, z.zone_type, z.kelurahan, z.center_lat, z.center_lng,
              z.radius_km, z.scheduled_date, z.total_member, z.status, z.created_at, z.created_by,
-             COUNT(CASE WHEN vl.visited = 1 AND vl.is_approved = 1 THEN 1 END) as visited_count,
-             COUNT(CASE WHEN vl.visited = 1 AND vl.is_approved = 0 THEN 1 END) as pending_approval_count,
-             COUNT(CASE WHEN vl.visited = 0 THEN 1 END) as pending_count
+             COUNT(CASE WHEN vl.visited = true AND vl.is_approved = true THEN 1 END) as visited_count,
+             COUNT(CASE WHEN vl.visited = true AND vl.is_approved = false THEN 1 END) as pending_approval_count,
+             COUNT(CASE WHEN vl.visited = false THEN 1 END) as pending_count
       FROM zones z
       LEFT JOIN visit_logs vl ON vl.zone_id = z.id
+        AND vl.visited_at >= DATE_TRUNC('month', z.scheduled_date::timestamp)
+        AND vl.visited_at < DATE_TRUNC('month', z.scheduled_date::timestamp) + INTERVAL '1 month'
       WHERE z.status = 'active'
     `;
     const params = [];
     if (salesman_code) {
-      query += ' AND z.salesman_code = ?';
+      query += ' AND z.salesman_code = $1';
       params.push(salesman_code.toUpperCase());
     }
     query += ' GROUP BY z.id ORDER BY z.scheduled_date DESC';
-    const zones = db.prepare(query).all(...params);
-    res.json(zones);
+    const resZones = await db.query(query, params);
+    res.json(resZones.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // GET /api/zones/mine - Salesman's own zones
-router.get('/zones/mine', authenticate, requireSalesman, (req, res) => {
+router.get('/zones/mine', authenticate, requireSalesman, async (req, res) => {
   try {
     const salesman = req.user.userid.toUpperCase();
-    const zones = db.prepare(`
+    const resZones = await db.query(`
       SELECT z.id, z.salesman_code, z.zone_type, z.kelurahan, z.scheduled_date,
              z.total_member, z.status, z.created_at,
-             COUNT(CASE WHEN vl.visited = 1 AND vl.is_approved = 1 THEN 1 END) as visited_count,
-             COUNT(CASE WHEN vl.visited = 1 AND vl.is_approved = 0 THEN 1 END) as pending_approval_count,
-             COUNT(CASE WHEN vl.visited = 0 THEN 1 END) as pending_count
+             COUNT(CASE WHEN vl.visited = true AND vl.is_approved = true THEN 1 END) as visited_count,
+             COUNT(CASE WHEN vl.visited = true AND vl.is_approved = false THEN 1 END) as pending_approval_count,
+             COUNT(CASE WHEN vl.visited = false THEN 1 END) as pending_count
       FROM zones z
       LEFT JOIN visit_logs vl ON vl.zone_id = z.id
-      WHERE z.salesman_code = ? AND z.status = 'active'
+        AND vl.visited_at >= DATE_TRUNC('month', z.scheduled_date::timestamp)
+        AND vl.visited_at < DATE_TRUNC('month', z.scheduled_date::timestamp) + INTERVAL '1 month'
+      WHERE z.salesman_code = $1 AND z.status = 'active'
       GROUP BY z.id
       ORDER BY z.scheduled_date DESC
-    `).all(salesman);
-    res.json(zones);
+    `, [salesman]);
+    res.json(resZones.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // GET /api/zones/member-codes - All member codes currently in active zones
-router.get('/zones/member-codes', authenticate, requireSupervisorOrAbove, (req, res) => {
+router.get('/zones/member-codes', authenticate, requireSupervisorOrAbove, async (req, res) => {
   try {
-    const rows = db.prepare(`
-      SELECT zm.member_code, IFNULL(MAX(vl.visited), 0) as max_visited
+    const resRows = await db.query(`
+      SELECT zm.member_code, COALESCE(bool_or(vl.visited), false) as max_visited
       FROM zone_members zm
       JOIN zones z ON z.id = zm.zone_id
       LEFT JOIN visit_logs vl ON vl.zone_id = zm.zone_id AND vl.member_code = zm.member_code
+        AND vl.visited_at >= DATE_TRUNC('month', z.scheduled_date::timestamp)
+        AND vl.visited_at < DATE_TRUNC('month', z.scheduled_date::timestamp) + INTERVAL '1 month'
       WHERE z.status = 'active'
       GROUP BY zm.member_code
-    `).all();
+    `);
     
     const zoned = [];
     const unvisited = [];
-    rows.forEach(r => {
-      if (r.max_visited > 0) zoned.push(r.member_code);
+    resRows.rows.forEach(r => {
+      if (r.max_visited === true) zoned.push(r.member_code);
       else unvisited.push(r.member_code);
     });
     
@@ -204,7 +211,7 @@ router.get('/zones/member-codes', authenticate, requireSupervisorOrAbove, (req, 
 });
 
 // GET /api/route/today
-router.get('/route/today', authenticate, requireSalesman, (req, res) => {
+router.get('/route/today', authenticate, requireSalesman, async (req, res) => {
   const salesman = req.user.userid.toUpperCase();
   const dateParam = req.query.date || getTodayDateString();
   
@@ -214,7 +221,7 @@ router.get('/route/today', authenticate, requireSalesman, (req, res) => {
   }
 
   try {
-    const data = getTodayRoute(salesman, dateParam);
+    const data = await getTodayRoute(salesman, dateParam);
     res.json(data);
   } catch (err) {
     console.error('route/today error:', err.message);
@@ -223,7 +230,7 @@ router.get('/route/today', authenticate, requireSalesman, (req, res) => {
 });
 
 // POST /api/visit/mark
-router.post('/visit/mark', authenticate, requireSalesman, (req, res) => {
+router.post('/visit/mark', authenticate, requireSalesman, async (req, res) => {
   const { zone_id, member_code } = req.body;
   if (!member_code || !zone_id) {
     return res.status(400).json({ error: 'Member code dan zone_id harus diisi' });
@@ -233,15 +240,19 @@ router.post('/visit/mark', authenticate, requireSalesman, (req, res) => {
   }
 
   try {
-    const stmt = db.prepare(`
-      UPDATE visit_logs 
-      SET visited = 1, visited_at = ? 
-      WHERE zone_id = ? AND member_code = ? AND visited = 0
-    `);
+    const resUpdate = await db.query(`
+      UPDATE visit_logs vl
+      SET visited = true, visited_at = $1 
+      FROM zones z
+      WHERE vl.zone_id = z.id
+        AND vl.zone_id = $2 
+        AND vl.member_code = $3 
+        AND vl.visited = false
+        AND vl.visited_at >= DATE_TRUNC('month', z.scheduled_date::timestamp)
+        AND vl.visited_at < DATE_TRUNC('month', z.scheduled_date::timestamp) + INTERVAL '1 month'
+    `, [new Date().toISOString(), Number(zone_id), sanitizeString(member_code, 20)]);
     
-    const info = stmt.run(new Date().toISOString(), Number(zone_id), sanitizeString(member_code, 20));
-    
-    if (info.changes === 0) {
+    if (resUpdate.rowCount === 0) {
       return res.status(404).json({ error: 'Member kunjungan tidak ditemukan untuk zona ini' });
     }
     
@@ -253,7 +264,7 @@ router.post('/visit/mark', authenticate, requireSalesman, (req, res) => {
 });
 
 // POST /api/visit/cancel
-router.post('/visit/cancel', authenticate, requireSalesman, (req, res) => {
+router.post('/visit/cancel', authenticate, requireSalesman, async (req, res) => {
   const { zone_id, member_code } = req.body;
   if (!member_code || !zone_id) {
     return res.status(400).json({ error: 'Member code dan zone_id harus diisi' });
@@ -263,15 +274,19 @@ router.post('/visit/cancel', authenticate, requireSalesman, (req, res) => {
   }
 
   try {
-    const stmt = db.prepare(`
-      UPDATE visit_logs 
-      SET visited = 0, visited_at = NULL 
-      WHERE zone_id = ? AND member_code = ? AND visited = 1
-    `);
+    const resUpdate = await db.query(`
+      UPDATE visit_logs vl
+      SET visited = false, visited_at = z.scheduled_date::timestamp
+      FROM zones z
+      WHERE vl.zone_id = z.id
+        AND vl.zone_id = $1 
+        AND vl.member_code = $2 
+        AND vl.visited = true
+        AND vl.visited_at >= DATE_TRUNC('month', z.scheduled_date::timestamp)
+        AND vl.visited_at < DATE_TRUNC('month', z.scheduled_date::timestamp) + INTERVAL '1 month'
+    `, [Number(zone_id), sanitizeString(member_code, 20)]);
     
-    const info = stmt.run(Number(zone_id), sanitizeString(member_code, 20));
-    
-    if (info.changes === 0) {
+    if (resUpdate.rowCount === 0) {
       return res.status(404).json({ error: 'Member kunjungan tidak ditemukan, belum ditandai, atau sudah disetujui' });
     }
     
@@ -288,15 +303,20 @@ router.get('/zone/:id/visits', authenticate, requireSupervisorOrAbove, async (re
   if (!isPositiveInteger(zoneId)) return res.status(400).json({ error: 'ID zona tidak valid' });
 
   try {
-    const zone = db.prepare('SELECT scheduled_date FROM zones WHERE id = ?').get(Number(zoneId));
-    if (!zone) return res.status(404).json({ error: 'Zona tidak ditemukan' });
+    const resZone = await db.query('SELECT scheduled_date FROM zones WHERE id = $1', [Number(zoneId)]);
+    if (resZone.rows.length === 0) return res.status(404).json({ error: 'Zona tidak ditemukan' });
+    const zone = resZone.rows[0];
 
-    const visits = db.prepare(`
+    const resVisits = await db.query(`
       SELECT zm.member_code, zm.member_name, v.visited, v.visited_at, v.is_approved, v.approved_at
       FROM zone_members zm
       JOIN visit_logs v ON zm.zone_id = v.zone_id AND zm.member_code = v.member_code
-      WHERE zm.zone_id = ?
-    `).all(Number(zoneId));
+      WHERE zm.zone_id = $1
+        AND v.visited_at >= DATE_TRUNC('month', $2::timestamp)
+        AND v.visited_at < DATE_TRUNC('month', $2::timestamp) + INTERVAL '1 month'
+    `, [Number(zoneId), zone.scheduled_date]);
+    
+    const visits = resVisits.rows;
 
     if (visits.length > 0) {
       const memberCodes = visits.map(v => v.member_code);
@@ -320,19 +340,25 @@ router.get('/zone/:id/visits', authenticate, requireSupervisorOrAbove, async (re
 });
 
 // POST /api/visit/approve
-router.post('/visit/approve', authenticate, requireSupervisorOrAbove, (req, res) => {
+router.post('/visit/approve', authenticate, requireSupervisorOrAbove, async (req, res) => {
   const { zone_id, member_code } = req.body;
   if (!member_code || !zone_id) return res.status(400).json({ error: 'Member code dan zone_id harus diisi' });
 
   try {
-    const stmt = db.prepare(`
-      UPDATE visit_logs 
-      SET is_approved = 1, approved_at = ? 
-      WHERE zone_id = ? AND member_code = ? AND visited = 1 AND is_approved = 0
-    `);
+    const resUpdate = await db.query(`
+      UPDATE visit_logs vl
+      SET is_approved = true, approved_at = $1 
+      FROM zones z
+      WHERE vl.zone_id = z.id
+        AND vl.zone_id = $2 
+        AND vl.member_code = $3 
+        AND vl.visited = true 
+        AND vl.is_approved = false
+        AND vl.visited_at >= DATE_TRUNC('month', z.scheduled_date::timestamp)
+        AND vl.visited_at < DATE_TRUNC('month', z.scheduled_date::timestamp) + INTERVAL '1 month'
+    `, [new Date().toISOString(), Number(zone_id), sanitizeString(member_code, 20)]);
     
-    const info = stmt.run(new Date().toISOString(), Number(zone_id), sanitizeString(member_code, 20));
-    if (info.changes === 0) {
+    if (resUpdate.rowCount === 0) {
       return res.status(404).json({ error: 'Kunjungan tidak ditemukan atau sudah disetujui' });
     }
     res.json({ success: true });
@@ -342,13 +368,16 @@ router.post('/visit/approve', authenticate, requireSupervisorOrAbove, (req, res)
 });
 
 // POST /api/reset (Admin Only)
-router.post('/reset', authenticate, requireAdmin, (req, res) => {
+router.post('/reset', authenticate, requireAdmin, async (req, res) => {
   try {
-    const backupFilename = performResetAndBackup();
+    const backupFilename = await performResetAndBackup();
     res.json({ success: true, backupFilename });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
+// GET /api/analytics/monthly (Manager/Supervisor)
+router.get('/analytics/monthly', authenticate, requireSupervisorOrAbove, getMonthlyEvaluation);
 
 module.exports = router;

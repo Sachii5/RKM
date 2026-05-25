@@ -173,43 +173,43 @@
         <div v-else-if="zoneVisits.length === 0" class="text-center py-8 text-gray-400">
           Tidak ada data member di zona ini.
         </div>
-        <div v-else class="overflow-x-auto">
+        <div v-else class="overflow-x-auto rounded-xl shadow-[0_4px_20px_rgb(0,0,0,0.04)] border border-gray-100 mt-2">
           <table class="w-full text-left border-collapse">
             <thead>
-              <tr class="bg-gray-100 uppercase text-xs text-gray-600">
-                <th class="p-3 border-b">Nama Member</th>
-                <th class="p-3 border-b">Kode</th>
-                <th class="p-3 border-b">Status Kunjungan</th>
-                <th class="p-3 border-b">Status Order</th>
-                <th class="p-3 border-b text-center">Waktu Kunjungan</th>
-                <th class="p-3 border-b text-center">Aksi</th>
+              <tr class="bg-gradient-to-r from-gray-50 to-slate-50 uppercase text-[10px] sm:text-xs text-gray-500 tracking-wider border-b border-gray-100">
+                <th class="px-5 py-4 font-bold">Nama Member</th>
+                <th class="px-5 py-4 font-bold">Kode</th>
+                <th class="px-5 py-4 font-bold">Status Kunjungan</th>
+                <th class="px-5 py-4 font-bold">Status Order</th>
+                <th class="px-5 py-4 font-bold text-center">Waktu Kunjungan</th>
+                <th class="px-5 py-4 font-bold text-center">Aksi</th>
               </tr>
             </thead>
-            <tbody>
-              <tr v-for="v in zoneVisits" :key="v.member_code" class="border-b hover:bg-gray-50">
-                <td class="p-3 font-medium">{{ v.member_name }}</td>
-                <td class="p-3 text-sm font-mono text-gray-500">{{ v.member_code }}</td>
-                <td class="p-3 text-sm">
-                  <span v-if="v.is_approved === 1" class="text-green-600 font-bold"><i class="fa-solid fa-circle-check"></i> Selesai</span>
-                  <span v-else-if="v.visited === 1" class="text-blue-500 font-bold"><i class="fa-solid fa-hourglass-half"></i> Menunggu Konfirmasi</span>
-                  <span v-else class="text-gray-400 font-bold"><i class="fa-regular fa-circle"></i> Belum</span>
+            <tbody class="divide-y divide-gray-50">
+              <tr v-for="v in zoneVisits" :key="v.member_code" class="bg-white hover:bg-slate-50/60 transition-colors">
+                <td class="px-5 py-3 font-bold text-gray-800">{{ v.member_name }}</td>
+                <td class="px-5 py-3 text-sm font-mono text-gray-500 bg-gray-50/50">{{ v.member_code }}</td>
+                <td class="px-5 py-3 text-sm">
+                  <span v-if="v.is_approved === true" class="bg-emerald-100/60 text-emerald-700 py-1 px-3 rounded-full text-xs font-bold border border-emerald-200"><i class="fa-solid fa-circle-check mr-1"></i>Selesai</span>
+                  <span v-else-if="v.visited === true" class="bg-blue-100/60 text-blue-700 py-1 px-3 rounded-full text-xs font-bold border border-blue-200"><i class="fa-solid fa-hourglass-half mr-1"></i>Menunggu</span>
+                  <span v-else class="bg-gray-100 text-gray-500 py-1 px-3 rounded-full text-xs font-bold border border-gray-200"><i class="fa-regular fa-circle mr-1"></i>Belum</span>
                 </td>
-                <td class="p-3 text-sm">
-                  <span v-if="v.harga_total_item > 0" class="text-green-600 font-bold"><i class="fa-solid fa-circle-check"></i> Berhasil Order<br><span class="text-xs text-gray-600">{{ formatRupiah(v.harga_total_item) }}</span></span>
-                  <span v-else class="text-red-500 font-bold"><i class="fa-solid fa-circle-xmark"></i> Belum Berhasil Order</span>
+                <td class="px-5 py-3 text-sm">
+                  <span v-if="v.harga_total_item > 0" class="text-emerald-600 font-bold flex flex-col"><span class="flex items-center"><i class="fa-solid fa-circle-check mr-1"></i>Berhasil</span><span class="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md mt-1 font-mono w-max">{{ formatRupiah(v.harga_total_item) }}</span></span>
+                  <span v-else class="text-rose-500 font-bold flex items-center"><i class="fa-solid fa-circle-xmark mr-1"></i>Gagal</span>
                 </td>
-                <td class="p-3 text-center text-xs text-gray-500">
-                  {{ formatDateTime(v.visited_at) }}
-                  <div v-if="v.is_approved === 1" class="text-[10px] text-green-600">Disetujui: {{ formatDateTime(v.approved_at) }}</div>
+                <td class="px-5 py-3 text-center text-xs text-gray-500">
+                  <div class="bg-gray-50 py-1 px-2 rounded-md inline-block">{{ formatDateTime(v.visited_at) }}</div>
+                  <div v-if="v.is_approved === true" class="text-[10px] text-emerald-600 mt-1 font-medium bg-emerald-50 px-2 py-0.5 rounded-md inline-block">Approve: {{ formatDateTime(v.approved_at) }}</div>
                 </td>
-                <td class="p-3 text-center">
+                <td class="px-5 py-3 text-center">
                   <button 
-                    v-if="v.visited === 1 && v.is_approved === 0" 
+                    v-if="v.visited === true && v.is_approved === false" 
                     @click="approveVisit(v.member_code)"
-                    class="btn btn-success text-xs py-1 px-3"
+                    class="bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm transition-colors text-xs font-medium py-1.5 px-4 rounded-lg"
                     :disabled="approving[v.member_code]"
                   >
-                    {{ approving[v.member_code] ? '...' : 'Terima' }}
+                    <i class="fa-solid fa-check mr-1"></i>{{ approving[v.member_code] ? '...' : 'Terima' }}
                   </button>
                 </td>
               </tr>
@@ -391,7 +391,7 @@ const approveVisit = async (memberCode) => {
     // Update local visit list array
     const vIndex = zoneVisits.value.findIndex(v => v.member_code === memberCode)
     if (vIndex !== -1) {
-      zoneVisits.value[vIndex].is_approved = 1
+      zoneVisits.value[vIndex].is_approved = true
       zoneVisits.value[vIndex].approved_at = new Date().toISOString()
     }
 

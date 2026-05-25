@@ -23,11 +23,11 @@
           v-for="(member, idx) in routeMembers" 
           :key="member.member_code"
           class="card mb-4 relative"
-          :class="{ 'opacity-70 bg-gray-50': member.visited === 1 }"
+          :class="{ 'opacity-70 bg-gray-50': member.visited === true }"
         >
           <div class="absolute top-4 right-4">
-             <span v-if="member.is_approved === 1" class="badge badge-success">SELESAI</span>
-             <span v-else-if="member.visited === 1" class="badge bg-blue-500 text-white">MENUNGGU KONFIRMASI</span>
+             <span v-if="member.is_approved === true" class="badge badge-success">SELESAI</span>
+             <span v-else-if="member.visited === true" class="badge bg-blue-500 text-white">MENUNGGU KONFIRMASI</span>
              <span v-else class="badge badge-warning text-white">#{{ idx + 1 }}</span>
           </div>
           
@@ -44,21 +44,21 @@
           </div>
           
           <button 
-            v-if="member.visited === 0" 
+            v-if="member.visited === false" 
             @click="markVisited(member.member_code)" 
             class="btn btn-primary w-full text-sm py-2"
           >
             Tandai Selesai
           </button>
           <button 
-            v-if="member.visited === 1 && member.is_approved !== 1" 
+            v-if="member.visited === true && member.is_approved !== true" 
             @click="cancelVisit(member.member_code)" 
             class="btn btn-outline w-full text-sm py-2" 
             style="border-color: var(--pk-danger); color: var(--pk-danger);"
           >
             Batalkan Kunjungan
           </button>
-          <div v-else-if="member.is_approved === 1" class="text-center text-green-600 text-sm font-bold py-2">
+          <div v-else-if="member.is_approved === true" class="text-center text-green-600 text-sm font-bold py-2">
             <i class="fa-solid fa-circle-check"></i> Kunjungan Telah Disetujui
           </div>
         </div>
@@ -169,7 +169,7 @@ const drawRoute = () => {
   // 2. Add Markers
   activeCoords.value.forEach((m, idx) => {
     L.marker([m.lat, m.lng], {
-      icon: m.is_approved === 1 ? icons.green : (m.visited === 1 ? icons.blue : icons.grey)
+      icon: m.is_approved === true ? icons.green : (m.visited === true ? icons.blue : icons.grey)
     })
     .bindPopup(`<strong>#${idx + 1} ${m.member_name}</strong><br/>${m.is_approved ? 'Disetujui' : (m.visited ? 'Menunggu Konfirmasi' : 'Belum Dikunjungi')}`)
     .addTo(routeLayer)
@@ -192,7 +192,7 @@ const markVisited = async (memberCode) => {
     
     const target = routeMembers.value.find(m => m.member_code === memberCode)
     if (target) {
-      target.visited = 1
+      target.visited = true
     }
     drawRoute()
 
@@ -215,7 +215,7 @@ const cancelVisit = async (memberCode) => {
     
     const target = routeMembers.value.find(m => m.member_code === memberCode)
     if (target) {
-      target.visited = 0
+      target.visited = false
       target.visited_at = null
     }
     drawRoute()

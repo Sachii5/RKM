@@ -94,8 +94,31 @@ const getMemberOrdersByDate = async (date, memberCodes) => {
   }
 };
 
+const getMemberOrdersByDateRange = async (startDate, endDate, memberCodes) => {
+  if (!memberCodes || memberCodes.length === 0) return [];
+  const query = `
+    SELECT
+        h.obi_kdmember AS kode_member,
+        h.obi_tglorder::date AS tgl_order,
+        SUM((CASE WHEN COALESCE(d.obi_qtyrealisasi, 0) <> 0 THEN d.obi_qtyrealisasi ELSE d.obi_qtyorder END) * (d.obi_hargasatuan + COALESCE(d.obi_ppn, 0) - COALESCE(d.obi_diskon, 0))) as harga_total_item
+    FROM tbtr_obi_h h
+    LEFT JOIN tbtr_obi_d d ON h.obi_notrans = d.obi_notrans AND h.obi_tgltrans = d.obi_tgltrans
+    WHERE h.obi_tglorder >= $1::timestamp AND h.obi_tglorder < $2::timestamp
+        AND h.obi_kdmember = ANY($3::text[])
+    GROUP BY h.obi_kdmember, h.obi_tglorder::date;
+  `;
+  try {
+    const res = await pool.query(query, [startDate, endDate, memberCodes]);
+    return res.rows;
+  } catch (error) {
+    console.error('Error fetching member orders by date range from PG', error);
+    throw error;
+  }
+};
+
 module.exports = {
   pool,
   getMembers,
-  getMemberOrdersByDate
+  getMemberOrdersByDate,
+  getMemberOrdersByDateRange
 };

@@ -23,49 +23,60 @@
         </div>
       </div>
 
-      <div class="table-container">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Status</th>
-              <th>Status</th>
-              <th>Kode Member</th>
-              <th>Nama</th>
-              <th>Alamat</th>
-              <th>Telepon</th>
-              <th>Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="v in visits" :key="v.member_code" :class="{ 'bg-green-50': v.visited === 1 }">
-              <td>
-                <span v-if="v.is_approved === 1" class="badge badge-success">SELESAI</span>
-                <span v-else-if="v.visited === 1" class="badge bg-blue-500 text-white">MENUNGGU KONFIRMASI</span>
-                <span v-else class="badge badge-warning text-white">BELUM TUNTAS</span>
-              </td>
-              <td class="font-mono text-sm">{{ v.member_code }}</td>
-              <td class="font-bold">{{ v.cus_namamember || 'Tidak Diketahui' }}</td>
-              <td class="text-sm text-gray-600 max-w-xs truncate" :title="v.cus_alamatmember4">
-                {{ v.cus_alamatmember4 }} - {{ v.cus_alamatmember5 }}
-              </td>
-              <td>{{ v.cus_hpmember || '-' }}</td>
-              <td>
-                <button 
-                  v-if="v.visited === 0" 
-                  @click="markVisited(v.member_code)" 
-                  class="btn btn-primary"
-                  style="padding: 8px 16px; font-size: 0.75rem"
-                >
-                  Tandai Selesai
-                </button>
-                <div v-else class="text-xs text-gray-500">
-                  {{ formatTime(v.visited_at) }}
-                  <div v-if="v.is_approved === 1" class="text-green-600 font-bold mt-1">Disetujui</div>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="bg-white rounded-2xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100/80 mt-4">
+        <div class="bg-gradient-to-r from-blue-50 to-indigo-50/50 px-6 py-4 border-b border-gray-100">
+          <h4 class="font-bold text-gray-800 text-lg flex items-center gap-2">
+            <i class="fa-solid fa-list-check text-blue-500"></i> Daftar Target Kunjungan
+          </h4>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-white border-b border-gray-100 uppercase text-[10px] sm:text-xs text-gray-500 tracking-wider">
+                <th class="px-6 py-4 font-bold">Status</th>
+                <th class="px-6 py-4 font-bold">Kode Member</th>
+                <th class="px-6 py-4 font-bold">Nama Toko</th>
+                <th class="px-6 py-4 font-bold">Alamat</th>
+                <th class="px-6 py-4 font-bold">Telepon</th>
+                <th class="px-6 py-4 font-bold text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+              <tr v-for="v in visits" :key="v.member_code" 
+                  class="bg-white hover:bg-blue-50/40 transition-all duration-200"
+                  :class="{ 'bg-emerald-50/30': v.visited === true }">
+                <td class="px-6 py-4">
+                  <span v-if="v.is_approved === true" class="bg-emerald-100/60 text-emerald-700 py-1 px-3 rounded-full text-xs font-bold border border-emerald-200">SELESAI</span>
+                  <span v-else-if="v.visited === true" class="bg-blue-100/60 text-blue-700 py-1 px-3 rounded-full text-xs font-bold border border-blue-200">MENUNGGU</span>
+                  <span v-else class="bg-amber-100/60 text-amber-700 py-1 px-3 rounded-full text-xs font-bold border border-amber-200">BELUM TUNTAS</span>
+                </td>
+                <td class="px-6 py-4 font-mono text-sm text-gray-600">{{ v.member_code }}</td>
+                <td class="px-6 py-4 font-bold text-gray-800">{{ v.cus_namamember || 'Tidak Diketahui' }}</td>
+                <td class="px-6 py-4 text-sm text-gray-500 max-w-[250px] truncate" :title="v.cus_alamatmember4">
+                  {{ v.cus_alamatmember4 }} {{ v.cus_alamatmember5 ? '- ' + v.cus_alamatmember5 : '' }}
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-600">{{ v.cus_hpmember || '-' }}</td>
+                <td class="px-6 py-4 text-center">
+                  <button 
+                    v-if="v.visited === false" 
+                    @click="markVisited(v.member_code)" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm"
+                  >
+                    Tandai Selesai
+                  </button>
+                  <div v-else class="flex flex-col items-center justify-center">
+                    <span class="text-xs text-gray-400 font-medium bg-gray-100 py-1 px-2 rounded-md">
+                      <i class="fa-regular fa-clock mr-1"></i>{{ formatTime(v.visited_at) }}
+                    </span>
+                    <div v-if="v.is_approved === true" class="text-emerald-500 font-bold text-[10px] mt-1 uppercase tracking-wide">
+                      <i class="fa-solid fa-check-circle mr-1"></i>Disetujui
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -81,7 +92,7 @@ const auth = useAuthStore()
 const visits = ref([])
 const loading = ref(true)
 
-const completedCount = computed(() => visits.value.filter(v => v.visited === 1).length)
+const completedCount = computed(() => visits.value.filter(v => v.visited === true).length)
 
 const fetchVisits = async () => {
   loading.value = true
@@ -104,7 +115,7 @@ const markVisited = async (memberCode) => {
     // Refresh list locally
     const target = visits.value.find(v => v.member_code === memberCode)
     if (target) {
-      target.visited = 1
+      target.visited = true
       target.visited_at = new Date().toISOString()
     }
   } catch (err) {
