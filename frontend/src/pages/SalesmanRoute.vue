@@ -15,10 +15,10 @@
       Tidak ada rute yang dipetakan untuk hari ini. Silakan hubungi supervisor Anda.
     </div>
 
-    <div v-else class="flex gap-6 h-full" style="height: 75vh;">
+    <div v-else class="flex flex-col lg:flex-row gap-4 lg:gap-6 w-full lg:h-[75vh]">
       
       <!-- List View -->
-      <div class="w-1/3 overflow-y-auto pr-2">
+      <div class="w-full lg:w-1/3 max-h-[50vh] lg:max-h-full overflow-y-auto pr-0 lg:pr-2">
         <div 
           v-for="(member, idx) in routeMembers" 
           :key="member.member_code"
@@ -33,27 +33,27 @@
           
           <h3 class="font-bold text-lg mb-1 cursor-pointer hover:text-primary transition-colors duration-200" @click="member.showDetails = !member.showDetails">
             {{ member.member_name || 'Tidak Diketahui' }}
-            <span v-if="!member.showDetails" class="ml-2 text-xs text-blue-500 font-normal">(Lihat Detail)</span>
+            <span v-if="!member.showDetails" class="ml-2 text-sm text-blue-500 font-normal">(Lihat Detail)</span>
           </h3>
-          <p class="text-xs text-gray-500 font-mono mb-2">{{ member.member_code }}</p>
-          <p class="text-sm text-gray-600 mb-2">{{ member.alamat_snapshot }}</p>
+          <p class="text-sm text-gray-500 font-mono mb-2">{{ member.member_code }}</p>
+          <p class="text-sm md:text-base text-gray-600 mb-2">{{ member.alamat_snapshot }}</p>
           
-          <div v-show="member.showDetails" class="bg-white p-3 rounded mb-4 text-sm mt-2 border shadow-sm animate-fade-in">
-             <div class="mb-1"><strong class="text-gray-700">Telepon HT:</strong> <a :href="'tel:'+member.hp_snapshot" class="text-blue-600 hover:underline">{{ member.hp_snapshot || '-' }}</a></div>
-             <div><strong class="text-gray-700">Email:</strong> <a :href="'mailto:'+member.email_snapshot" class="text-blue-600 hover:underline">{{ member.email_snapshot || '-' }}</a></div>
+          <div v-show="member.showDetails" class="bg-white p-3 rounded mb-4 text-sm md:text-base mt-2 border shadow-sm animate-fade-in">
+             <div class="mb-2"><strong class="text-gray-700">Telepon HT:</strong> <a :href="'tel:'+member.hp_snapshot" class="text-blue-600 hover:underline min-h-[44px] inline-flex items-center">{{ member.hp_snapshot || '-' }}</a></div>
+             <div><strong class="text-gray-700">Email:</strong> <a :href="'mailto:'+member.email_snapshot" class="text-blue-600 hover:underline min-h-[44px] inline-flex items-center">{{ member.email_snapshot || '-' }}</a></div>
           </div>
           
           <button 
             v-if="member.visited === false" 
             @click="markVisited(member.member_code)" 
-            class="btn btn-primary w-full text-sm py-2"
+            class="btn btn-primary w-full text-sm md:text-base py-3 min-h-[44px]"
           >
             Tandai Selesai
           </button>
           <button 
             v-if="member.visited === true && member.is_approved !== true" 
             @click="cancelVisit(member.member_code)" 
-            class="btn btn-outline w-full text-sm py-2" 
+            class="btn btn-outline w-full text-sm md:text-base py-3 min-h-[44px]" 
             style="border-color: var(--pk-danger); color: var(--pk-danger);"
           >
             Batalkan Kunjungan
@@ -65,7 +65,7 @@
       </div>
 
       <!-- Map View -->
-      <div id="route-map" class="flex-1 map-container shadow-md border rounded overflow-hidden" style="height: 100%; min-height: 500px; z-index: 1;"></div>
+      <div id="route-map" class="w-full lg:flex-1 map-container shadow-md border rounded overflow-hidden h-[50vh] lg:h-full" style="min-height: 400px; z-index: 1;"></div>
 
     </div>
   </div>
