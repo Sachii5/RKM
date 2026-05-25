@@ -9,22 +9,19 @@
       <div class="flex flex-wrap items-end gap-3">
         <div class="flex flex-col">
           <label class="text-xs font-semibold text-gray-600 mb-1">Bulan</label>
-          <select v-model="selectedMonth" class="border border-gray-300 rounded-md text-sm py-1.5 px-3 min-w-[120px] bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+          <select v-model="selectedMonth" @change="fetchEvaluation" class="border border-gray-300 rounded-md text-sm py-1.5 px-3 min-w-[120px] bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer">
             <option v-for="(m, i) in months" :key="i" :value="i + 1">{{ m }}</option>
           </select>
         </div>
         <div class="flex flex-col">
           <label class="text-xs font-semibold text-gray-600 mb-1">Tahun</label>
-          <select v-model="selectedYear" class="border border-gray-300 rounded-md text-sm py-1.5 px-3 min-w-[100px] bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+          <select v-model="selectedYear" @change="fetchEvaluation" class="border border-gray-300 rounded-md text-sm py-1.5 px-3 min-w-[100px] bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer">
             <option v-for="y in years" :key="y" :value="y">{{ y }}</option>
           </select>
         </div>
         <div class="flex gap-2">
-          <button @click="fetchEvaluation" class="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md text-sm py-1.5 px-4 transition-colors disabled:opacity-60 shadow-sm flex items-center gap-1" :disabled="loading">
-            <i class="fa-solid fa-search text-xs"></i> Tampilkan
-          </button>
-          <button @click="exportToCSV" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-md text-sm py-1.5 px-4 transition-colors disabled:opacity-60 shadow-sm flex items-center gap-1" :disabled="loading || !data.salesmen || data.salesmen.length === 0">
-            <i class="fa-solid fa-file-csv text-xs"></i> Export CSV
+          <button @click="exportToCSV" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-md text-sm py-1.5 px-4 transition-colors disabled:opacity-60 shadow-sm flex items-center gap-2" :disabled="loading || !data.salesmen || data.salesmen.length === 0">
+            <i class="fa-solid fa-file-csv text-sm"></i> Export CSV
           </button>
         </div>
       </div>
