@@ -1,5 +1,5 @@
 const { pool } = require('../db/pg');
-const sqliteDb = require('../db/sqlite');
+const db = require('../db/pg_ops');
 const { hashPassword, comparePassword } = require('../utils/crypto');
 const { generateToken } = require('../utils/jwt');
 
@@ -25,18 +25,20 @@ const loginUser = async (userid, password) => {
   if (isSalesmanFormat) {
     const sCode = userid.toUpperCase();
     if (['DND', 'DPT', 'FRL', 'LID'].includes(sCode)) {
-      // Check SQLite users_local
-      let user = sqliteDb.prepare('SELECT * FROM users_local WHERE userid = ?').get(sCode);
+      // Check Postgres users_local
+      let resUser = await db.query('SELECT * FROM users_local WHERE userid = $1', [sCode]);
+      let user = resUser.rows[0];
       
       if (!user) {
         // First time salesman login -> Seed default password '123456'
         const defaultHash = await hashPassword('123456');
-        sqliteDb.prepare(`
+        await db.query(`
           INSERT INTO users_local (userid, role, password_hash, first_login)
-          VALUES (?, ?, ?, 1)
-        `).run(sCode, 'SALESMAN', defaultHash);
+          VALUES ($1, $2, $3, true)
+        `, [sCode, 'SALESMAN', defaultHash]);
         
-        user = sqliteDb.prepare('SELECT * FROM users_local WHERE userid = ?').get(sCode);
+        resUser = await db.query('SELECT * FROM users_local WHERE userid = $1', [sCode]);
+        user = resUser.rows[0];
       }
       
       const pwdMatch = await comparePassword(password, user.password_hash);
@@ -53,7 +55,7 @@ const loginUser = async (userid, password) => {
       return {
         token,
         role: user.role,
-        first_login: user.first_login === 1
+        first_login: user.first_login === true
       };
     }
   }
@@ -106,14 +108,13 @@ const loginUser = async (userid, password) => {
 const changePassword = async (userid, newPassword) => {
   const newHash = await hashPassword(newPassword);
   
-  const stmt = sqliteDb.prepare(`
+  const res = await db.query(`
     UPDATE users_local 
-    SET password_hash = ?, first_login = 0
-    WHERE userid = ?
-  `);
+    SET password_hash = $1, first_login = false
+    WHERE userid = $2
+  `, [newHash, userid.toUpperCase()]);
   
-  const info = stmt.run(newHash, userid.toUpperCase());
-  if (info.changes === 0) {
+  if (res.rowCount === 0) {
     throw new Error('User not found or role cannot change password locally');
   }
   return true;

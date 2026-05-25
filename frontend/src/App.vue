@@ -20,6 +20,9 @@
           <div class="nav-item">
             <router-link to="/zones" class="nav-link"><i class="fa-solid fa-clipboard-list fa-fw"></i> Daftar Rute RKM</router-link>
           </div>
+          <div class="nav-item">
+            <router-link to="/evaluation" class="nav-link"><i class="fa-solid fa-chart-line fa-fw"></i> Laporan Evaluasi</router-link>
+          </div>
         </template>
 
         <!-- Tautan Salesman -->

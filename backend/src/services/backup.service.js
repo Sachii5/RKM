@@ -1,19 +1,18 @@
 const fs = require('fs');
 const path = require('path');
-const db = require('../db/sqlite');
+const db = require('../db/pg_ops');
 const dayjs = require('dayjs');
 
 const BACKUP_DIR = path.resolve(__dirname, '../../backup');
-const DB_PATH = path.resolve(__dirname, '../../visits.db');
 
-const performResetAndBackup = () => {
+const performResetAndBackup = async () => {
   // Ensure backup directory exists
   if (!fs.existsSync(BACKUP_DIR)) {
     fs.mkdirSync(BACKUP_DIR, { recursive: true });
   }
 
   const today = dayjs().format('YYYYMMDD_HHmmss');
-  const backupFilename = `visits_${today}.sqlite`;
+  const backupFilename = `visits_${today}.json`;
   const backupPath = path.join(BACKUP_DIR, backupFilename);
 
   // Security: Validate backup path stays within backup directory (prevent path traversal)
@@ -22,24 +21,40 @@ const performResetAndBackup = () => {
     throw new Error('Invalid backup path');
   }
 
-  // 1. Backup visits.db into /backup
-  fs.copyFileSync(DB_PATH, backupPath);
+  // 1. Fetch data from PostgreSQL
+  const resZones = await db.query('SELECT * FROM zones');
+  const resMembers = await db.query('SELECT * FROM zone_members');
+  const resVisits = await db.query('SELECT * FROM visit_logs');
+
+  const backupData = {
+    zones: resZones.rows,
+    zone_members: resMembers.rows,
+    visit_logs: resVisits.rows
+  };
+
+  // Write backup data to JSON file
+  fs.writeFileSync(backupPath, JSON.stringify(backupData, null, 2));
 
   // 2. Clear all active zone data in a transaction
-  const clearDb = db.transaction(() => {
-    db.prepare('DELETE FROM visit_logs').run();
-    db.prepare('DELETE FROM zone_members').run();
-    db.prepare('DELETE FROM zones').run();
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM visit_logs');
+    await client.query('DELETE FROM zone_members');
+    await client.query('DELETE FROM zones');
     
-    // Reset autoincrement safely (table may not have entries in sqlite_sequence yet)
-    try {
-      db.prepare(`DELETE FROM sqlite_sequence WHERE name IN ('visit_logs', 'zone_members', 'zones')`).run();
-    } catch (e) {
-      // sqlite_sequence may not exist if no AUTOINCREMENT rows were inserted yet — safe to ignore
-    }
-  });
-  
-  clearDb();
+    // Reset sequences in PostgreSQL
+    await client.query('ALTER SEQUENCE zones_id_seq RESTART WITH 1');
+    await client.query('ALTER SEQUENCE zone_members_id_seq RESTART WITH 1');
+    await client.query('ALTER SEQUENCE visit_logs_id_seq RESTART WITH 1');
+    
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
 
   // 3. Delete backups older than 365 days
   cleanupOldBackups();
@@ -54,7 +69,7 @@ const cleanupOldBackups = () => {
   const files = fs.readdirSync(BACKUP_DIR);
 
   files.forEach(file => {
-    if (file.startsWith('visits_') && file.endsWith('.sqlite')) {
+    if (file.startsWith('visits_') && (file.endsWith('.sqlite') || file.endsWith('.json'))) {
       const filePath = path.join(BACKUP_DIR, file);
       const stats = fs.statSync(filePath);
       const mtime = dayjs(stats.mtime);

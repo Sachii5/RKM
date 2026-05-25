@@ -5,6 +5,7 @@ import SalesmanRoute from '../pages/SalesmanRoute.vue'
 import ResetPage from '../pages/Reset.vue'
 import ChangePassword from '../pages/ChangePassword.vue'
 import ZoneList from '../pages/ZoneList.vue'
+import ManagerDashboard from '../pages/ManagerDashboard.vue'
 import { useAuthStore } from '../stores/auth'
 
 const routes = [
@@ -33,6 +34,11 @@ const routes = [
     path: '/zones', 
     component: ZoneList,
     meta: { requiresAuth: true, allowedRoles: ['ADMIN', 'SUPERVISOR', 'SALESMAN'] } 
+  },
+  { 
+    path: '/evaluation', 
+    component: ManagerDashboard,
+    meta: { requiresAuth: true, allowedRoles: ['ADMIN', 'SUPERVISOR'] } 
   },
 ]
 
