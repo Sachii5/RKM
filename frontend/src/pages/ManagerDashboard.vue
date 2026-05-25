@@ -6,21 +6,21 @@
     </header>
 
     <div class="card glass mb-6">
-      <div class="flex flex-col sm:flex-row items-stretch sm:items-end gap-3 sm:gap-4">
-        <div class="flex flex-col w-full sm:w-auto">
+      <div class="flex flex-wrap items-end gap-3">
+        <div class="flex flex-col">
           <label class="text-xs font-semibold text-gray-600 mb-1">Bulan</label>
-          <select v-model="selectedMonth" @change="fetchEvaluation" class="w-full sm:w-auto border border-gray-300 rounded-md text-sm md:text-base py-2.5 px-3 min-w-[120px] min-h-[44px] bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer">
+          <select v-model="selectedMonth" @change="fetchEvaluation" class="border border-gray-300 rounded-md text-sm py-1.5 px-3 min-w-[120px] bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer">
             <option v-for="(m, i) in months" :key="i" :value="i + 1">{{ m }}</option>
           </select>
         </div>
-        <div class="flex flex-col w-full sm:w-auto">
+        <div class="flex flex-col">
           <label class="text-xs font-semibold text-gray-600 mb-1">Tahun</label>
-          <select v-model="selectedYear" @change="fetchEvaluation" class="w-full sm:w-auto border border-gray-300 rounded-md text-sm md:text-base py-2.5 px-3 min-w-[100px] min-h-[44px] bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer">
+          <select v-model="selectedYear" @change="fetchEvaluation" class="border border-gray-300 rounded-md text-sm py-1.5 px-3 min-w-[100px] bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer">
             <option v-for="y in years" :key="y" :value="y">{{ y }}</option>
           </select>
         </div>
-        <div class="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-          <button @click="exportToCSV" class="w-full sm:w-auto justify-center bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-md text-sm md:text-base py-2.5 px-4 min-h-[44px] transition-colors disabled:opacity-60 shadow-sm flex items-center gap-2" :disabled="loading || !data.salesmen || data.salesmen.length === 0">
+        <div class="flex gap-2">
+          <button @click="exportToCSV" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-md text-sm py-1.5 px-4 transition-colors disabled:opacity-60 shadow-sm flex items-center gap-2" :disabled="loading || !data.salesmen || data.salesmen.length === 0">
             <i class="fa-solid fa-file-csv text-sm"></i> Export CSV
           </button>
         </div>
@@ -40,20 +40,20 @@
       <div class="card glass">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
           <h3 class="font-bold text-lg text-gray-700">Tren Harian Kunjungan & Closing</h3>
-          <div class="w-full sm:w-auto mt-2 sm:mt-0">
-            <select v-model="selectedSalesmanChart" class="w-full sm:w-auto min-w-[150px] py-2.5 px-3 min-h-[44px] text-sm md:text-base bg-gray-50 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer">
+          <div class="form-group mb-0 w-full sm:w-auto mt-2 sm:mt-0">
+            <select v-model="selectedSalesmanChart" class="form-control min-w-[150px] py-1 text-sm bg-gray-50">
               <option value="">Semua Salesman</option>
               <option v-for="s in data.salesmen" :key="s.salesman_code" :value="s.salesman_code">{{ s.salesman_code }}</option>
             </select>
           </div>
         </div>
-        <div class="relative w-full h-[300px] md:h-[400px]">
+        <div style="position: relative; height: 350px; width: 100%;">
           <Line :data="chartData" :options="chartOptions" v-if="chartData" />
         </div>
       </div>
 
       <!-- Data Tables -->
-      <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6">
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
         
         <!-- Table 1: Performa Kunjungan -->
         <div class="bg-white rounded-2xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100/80 transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
@@ -62,10 +62,10 @@
               <i class="fa-solid fa-route text-blue-500"></i> Performa Kunjungan
             </h4>
           </div>
-          <div class="overflow-x-auto w-full">
+          <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
               <thead>
-                <tr class="bg-white border-b border-gray-100 uppercase text-xs sm:text-sm text-gray-500 tracking-wider whitespace-nowrap">
+                <tr class="bg-white border-b border-gray-100 uppercase text-[10px] sm:text-xs text-gray-500 tracking-wider">
                   <th class="px-6 py-4 font-bold">Salesman Code</th>
                   <th class="px-6 py-4 font-bold text-center">Total Kunjungan</th>
                   <th class="px-6 py-4 font-bold text-center">Kunjungan Berhasil</th>
@@ -73,7 +73,7 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-50">
-                <tr v-for="(row, idx) in data.salesmen" :key="'t1'+idx" class="bg-white even:bg-gray-50/30 hover:bg-blue-50/40 transition-all duration-200 whitespace-nowrap">
+                <tr v-for="(row, idx) in data.salesmen" :key="'t1'+idx" class="bg-white even:bg-gray-50/30 hover:bg-blue-50/40 transition-all duration-200">
                   <td class="px-6 py-4 font-bold text-gray-800 text-sm md:text-base">{{ row.salesman_code }}</td>
                   <td class="px-6 py-4 text-center text-sm font-medium text-gray-500">{{ row.total_assigned }}</td>
                   <td class="px-6 py-4 text-center text-sm font-bold text-blue-600">
@@ -97,10 +97,10 @@
               <i class="fa-solid fa-handshake text-purple-500"></i> Performa Closing
             </h4>
           </div>
-          <div class="overflow-x-auto w-full">
+          <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
               <thead>
-                <tr class="bg-white border-b border-gray-100 uppercase text-xs sm:text-sm text-gray-500 tracking-wider whitespace-nowrap">
+                <tr class="bg-white border-b border-gray-100 uppercase text-[10px] sm:text-xs text-gray-500 tracking-wider">
                   <th class="px-6 py-4 font-bold">Salesman Code</th>
                   <th class="px-6 py-4 font-bold text-center">Kunjungan Berhasil</th>
                   <th class="px-6 py-4 font-bold text-center">Closing Order</th>
@@ -108,7 +108,7 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-50">
-                <tr v-for="(row, idx) in data.salesmen" :key="'t2'+idx" class="bg-white even:bg-gray-50/30 hover:bg-purple-50/40 transition-all duration-200 whitespace-nowrap">
+                <tr v-for="(row, idx) in data.salesmen" :key="'t2'+idx" class="bg-white even:bg-gray-50/30 hover:bg-purple-50/40 transition-all duration-200">
                   <td class="px-6 py-4 font-bold text-gray-800 text-sm md:text-base">{{ row.salesman_code }}</td>
                   <td class="px-6 py-4 text-center text-sm font-bold text-blue-600">{{ row.total_visited }}</td>
                   <td class="px-6 py-4 text-center text-sm font-bold text-purple-600">

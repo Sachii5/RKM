@@ -29,10 +29,10 @@
             <i class="fa-solid fa-list-check text-blue-500"></i> Daftar Target Kunjungan
           </h4>
         </div>
-        <div class="overflow-x-auto w-full">
+        <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse">
             <thead>
-              <tr class="bg-white border-b border-gray-100 uppercase text-xs sm:text-sm text-gray-500 tracking-wider whitespace-nowrap">
+              <tr class="bg-white border-b border-gray-100 uppercase text-[10px] sm:text-xs text-gray-500 tracking-wider">
                 <th class="px-6 py-4 font-bold">Status</th>
                 <th class="px-6 py-4 font-bold">Kode Member</th>
                 <th class="px-6 py-4 font-bold">Nama Toko</th>
@@ -43,7 +43,7 @@
             </thead>
             <tbody class="divide-y divide-gray-50">
               <tr v-for="v in visits" :key="v.member_code" 
-                  class="bg-white hover:bg-blue-50/40 transition-all duration-200 whitespace-nowrap"
+                  class="bg-white hover:bg-blue-50/40 transition-all duration-200"
                   :class="{ 'bg-emerald-50/30': v.visited === true }">
                 <td class="px-6 py-4">
                   <span v-if="v.is_approved === true" class="bg-emerald-100/60 text-emerald-700 py-1 px-3 rounded-full text-xs font-bold border border-emerald-200">SELESAI</span>
@@ -60,7 +60,7 @@
                   <button 
                     v-if="v.visited === false" 
                     @click="markVisited(v.member_code)" 
-                    class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 min-h-[44px] rounded-lg shadow-sm transition-colors text-sm md:text-base"
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm"
                   >
                     Tandai Selesai
                   </button>
