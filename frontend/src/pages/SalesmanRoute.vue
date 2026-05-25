@@ -27,6 +27,7 @@
         >
           <div class="absolute top-4 right-4">
              <span v-if="member.is_approved === true" class="badge badge-success">SELESAI</span>
+             <span v-else-if="member.is_closed === true" class="badge bg-red-500 text-white">TOKO TUTUP</span>
              <span v-else-if="member.visited === true" class="badge bg-blue-500 text-white">MENUNGGU KONFIRMASI</span>
              <span v-else class="badge badge-warning text-white">#{{ idx + 1 }}</span>
           </div>
@@ -46,9 +47,16 @@
           <button 
             v-if="member.visited === false" 
             @click="markVisited(member.member_code)" 
-            class="btn btn-primary w-full text-sm py-2"
+            class="btn btn-primary w-full text-sm py-2 mb-2"
           >
             Tandai Selesai
+          </button>
+          <button 
+            v-if="member.visited === false" 
+            @click="markClosed(member.member_code)" 
+            class="btn bg-orange-500 hover:bg-orange-600 text-white font-medium w-full text-sm py-2 rounded-lg transition-colors"
+          >
+            Toko Tutup
           </button>
           <button 
             v-if="member.visited === true && member.is_approved !== true" 
@@ -101,7 +109,8 @@ const createIcon = (color) => L.icon({
 const icons = {
   blue: createIcon('blue'),
   green: createIcon('green'),
-  grey: createIcon('grey')
+  grey: createIcon('grey'),
+  red: createIcon('red')
 }
 
 const todayDisplay = computed(() => dayjs().format('DD MMMM YYYY'))
@@ -169,9 +178,9 @@ const drawRoute = () => {
   // 2. Add Markers
   activeCoords.value.forEach((m, idx) => {
     L.marker([m.lat, m.lng], {
-      icon: m.is_approved === true ? icons.green : (m.visited === true ? icons.blue : icons.grey)
+      icon: m.is_approved === true ? icons.green : (m.is_closed === true ? icons.red : (m.visited === true ? icons.blue : icons.grey))
     })
-    .bindPopup(`<strong>#${idx + 1} ${m.member_name}</strong><br/>${m.is_approved ? 'Disetujui' : (m.visited ? 'Menunggu Konfirmasi' : 'Belum Dikunjungi')}`)
+    .bindPopup(`<strong>#${idx + 1} ${m.member_name}</strong><br/>${m.is_approved ? 'Disetujui' : (m.is_closed ? 'Toko Tutup' : (m.visited ? 'Menunggu Konfirmasi' : 'Belum Dikunjungi'))}`)
     .addTo(routeLayer)
   })
 
@@ -203,6 +212,26 @@ const markVisited = async (memberCode) => {
   }
 }
 
+const markClosed = async (memberCode) => {
+  try {
+    await axios.post('/api/visit/close', {
+      zone_id: zoneInfo.value.id,
+      member_code: memberCode
+    }, {
+      headers: { Authorization: `Bearer ${auth.token}` }
+    })
+    
+    const target = routeMembers.value.find(m => m.member_code === memberCode)
+    if (target) {
+      target.visited = true
+      target.is_closed = true
+    }
+    drawRoute()
+  } catch (err) {
+    alert(err.response?.data?.error || 'Gagal memperbarui status')
+  }
+}
+
 const cancelVisit = async (memberCode) => {
   if (!window.confirm('Batalkan kunjungan member ini?')) return
   try {
@@ -216,6 +245,7 @@ const cancelVisit = async (memberCode) => {
     const target = routeMembers.value.find(m => m.member_code === memberCode)
     if (target) {
       target.visited = false
+      target.is_closed = false
       target.visited_at = null
     }
     drawRoute()

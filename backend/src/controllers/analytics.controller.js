@@ -28,6 +28,7 @@ const getMonthlyEvaluation = async (req, res) => {
         z.salesman_code,
         vl.member_code,
         vl.visited,
+        vl.is_closed,
         vl.is_approved,
         vl.visited_at
       FROM visit_logs vl
@@ -61,7 +62,7 @@ const getMonthlyEvaluation = async (req, res) => {
     const dailyMap = {};
     
     visitRows.forEach(row => {
-      const { salesman_code, member_code, visited, is_approved, visited_at } = row;
+      const { salesman_code, member_code, visited, is_closed, is_approved, visited_at } = row;
       const visitDate = dayjs(visited_at).startOf('day');
       const dateStr = visitDate.format('YYYY-MM-DD');
       
@@ -70,6 +71,7 @@ const getMonthlyEvaluation = async (req, res) => {
           salesman_code,
           total_assigned: 0,
           total_visited: 0,
+          total_closed: 0,
           total_approved: 0,
           closing_order: 0
         };
@@ -81,6 +83,7 @@ const getMonthlyEvaluation = async (req, res) => {
           date: dateStr,
           salesman_code,
           total_visited: 0,
+          total_closed: 0,
           closing_order: 0
         };
       }
@@ -89,12 +92,17 @@ const getMonthlyEvaluation = async (req, res) => {
       const dailyStat = dailyMap[dailyKey];
       stat.total_assigned++;
       
-      const isSuccess = visited === true || is_approved === true;
-      if (visited === true) {
+      const isSuccess = (visited === true || is_approved === true) && is_closed !== true;
+      
+      if (is_closed === true) {
+        stat.total_closed++;
+        dailyStat.total_closed++;
+      } else if (visited === true) {
         stat.total_visited++;
         dailyStat.total_visited++;
       }
-      if (is_approved === true) stat.total_approved++;
+      
+      if (is_approved === true && is_closed !== true) stat.total_approved++;
       
       if (isSuccess) {
         

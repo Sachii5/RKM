@@ -68,6 +68,7 @@
                 <tr class="bg-white border-b border-gray-100 uppercase text-[10px] sm:text-xs text-gray-500 tracking-wider">
                   <th class="px-6 py-4 font-bold">Salesman Code</th>
                   <th class="px-6 py-4 font-bold text-center">Total Kunjungan</th>
+                  <th class="px-6 py-4 font-bold text-center text-orange-600">Toko Tutup</th>
                   <th class="px-6 py-4 font-bold text-center">Kunjungan Berhasil</th>
                   <th class="px-6 py-4 font-bold text-center">Persentase</th>
                 </tr>
@@ -76,6 +77,7 @@
                 <tr v-for="(row, idx) in data.salesmen" :key="'t1'+idx" class="bg-white even:bg-gray-50/30 hover:bg-blue-50/40 transition-all duration-200">
                   <td class="px-6 py-4 font-bold text-gray-800 text-sm md:text-base">{{ row.salesman_code }}</td>
                   <td class="px-6 py-4 text-center text-sm font-medium text-gray-500">{{ row.total_assigned }}</td>
+                  <td class="px-6 py-4 text-center text-sm font-bold text-orange-500">{{ row.total_closed ?? 0 }}</td>
                   <td class="px-6 py-4 text-center text-sm font-bold text-blue-600">
                     <div class="bg-blue-100/50 text-blue-700 py-1 px-3 rounded-lg inline-block">{{ row.total_visited }}</div>
                   </td>
@@ -252,11 +254,11 @@ const exportToCSV = () => {
   if (!data.value.salesmen || data.value.salesmen.length === 0) return
 
   let csvContent = "PERFORMA SALESMAN\n"
-  csvContent += "Salesman Code,Total Kunjungan,Kunjungan Berhasil,Persentase Kunjungan (%),Closing Order,Closing Rate (%)\n"
+  csvContent += "Salesman Code,Total Kunjungan,Toko Tutup,Kunjungan Berhasil,Persentase Kunjungan (%),Closing Order,Closing Rate (%)\n"
   
   data.value.salesmen.forEach(r => {
     const success_pct = r.total_assigned ? Math.round((r.total_visited/r.total_assigned)*100) : 0
-    csvContent += `${r.salesman_code},${r.total_assigned},${r.total_visited},${success_pct},${r.closing_order},${r.success_percentage}\n`
+    csvContent += `${r.salesman_code},${r.total_assigned},${r.total_closed ?? 0},${r.total_visited},${success_pct},${r.closing_order},${r.success_percentage}\n`
   })
 
   csvContent += "\n\nTREN HARIAN KUNJUNGAN & CLOSING\n"
