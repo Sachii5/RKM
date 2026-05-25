@@ -34,7 +34,6 @@ const getMonthlyEvaluation = async (req, res) => {
       JOIN zones z ON z.id = vl.zone_id
       WHERE vl.visited_at >= $1::timestamp 
         AND vl.visited_at < $2::timestamp
-        AND z.status = 'active'
     `;
     const { rows: visitRows } = await db.query(query, [startDateStr, endDateStr]);
 
