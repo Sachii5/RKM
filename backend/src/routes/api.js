@@ -137,8 +137,9 @@ router.get('/zones', authenticate, requireSupervisorOrAbove, async (req, res) =>
     let query = `
       SELECT z.id, z.salesman_code, z.zone_type, z.kelurahan, z.center_lat, z.center_lng,
              z.radius_km, z.scheduled_date, z.total_member, z.status, z.created_at, z.created_by,
-             COUNT(CASE WHEN vl.visited = true AND vl.is_approved = true THEN 1 END) as visited_count,
-             COUNT(CASE WHEN vl.visited = true AND vl.is_approved = false THEN 1 END) as pending_approval_count,
+             COUNT(CASE WHEN vl.visited = true AND vl.is_closed = false AND vl.is_approved = true THEN 1 END) as visited_count,
+             COUNT(CASE WHEN vl.visited = true AND vl.is_closed = false AND vl.is_approved = false THEN 1 END) as pending_approval_count,
+             COUNT(CASE WHEN vl.is_closed = true THEN 1 END) as closed_count,
              COUNT(CASE WHEN vl.visited = false THEN 1 END) as pending_count
       FROM zones z
       LEFT JOIN visit_logs vl ON vl.zone_id = z.id
@@ -166,8 +167,9 @@ router.get('/zones/mine', authenticate, requireSalesman, async (req, res) => {
     const resZones = await db.query(`
       SELECT z.id, z.salesman_code, z.zone_type, z.kelurahan, z.scheduled_date,
              z.total_member, z.status, z.created_at,
-             COUNT(CASE WHEN vl.visited = true AND vl.is_approved = true THEN 1 END) as visited_count,
-             COUNT(CASE WHEN vl.visited = true AND vl.is_approved = false THEN 1 END) as pending_approval_count,
+             COUNT(CASE WHEN vl.visited = true AND vl.is_closed = false AND vl.is_approved = true THEN 1 END) as visited_count,
+             COUNT(CASE WHEN vl.visited = true AND vl.is_closed = false AND vl.is_approved = false THEN 1 END) as pending_approval_count,
+             COUNT(CASE WHEN vl.is_closed = true THEN 1 END) as closed_count,
              COUNT(CASE WHEN vl.visited = false THEN 1 END) as pending_count
       FROM zones z
       LEFT JOIN visit_logs vl ON vl.zone_id = z.id
@@ -242,7 +244,7 @@ router.post('/visit/mark', authenticate, requireSalesman, async (req, res) => {
   try {
     const resUpdate = await db.query(`
       UPDATE visit_logs vl
-      SET visited = true, visited_at = $1 
+      SET visited = true, is_closed = false, visited_at = $1 
       FROM zones z
       WHERE vl.zone_id = z.id
         AND vl.zone_id = $2 
@@ -263,6 +265,40 @@ router.post('/visit/mark', authenticate, requireSalesman, async (req, res) => {
   }
 });
 
+// POST /api/visit/close
+router.post('/visit/close', authenticate, requireSalesman, async (req, res) => {
+  const { zone_id, member_code } = req.body;
+  if (!member_code || !zone_id) {
+    return res.status(400).json({ error: 'Member code dan zone_id harus diisi' });
+  }
+  if (!isPositiveInteger(zone_id)) {
+    return res.status(400).json({ error: 'zone_id tidak valid' });
+  }
+
+  try {
+    const resUpdate = await db.query(`
+      UPDATE visit_logs vl
+      SET visited = true, is_closed = true, visited_at = $1 
+      FROM zones z
+      WHERE vl.zone_id = z.id
+        AND vl.zone_id = $2 
+        AND vl.member_code = $3 
+        AND vl.visited = false
+        AND vl.visited_at >= DATE_TRUNC('month', z.scheduled_date::timestamp)
+        AND vl.visited_at < DATE_TRUNC('month', z.scheduled_date::timestamp) + INTERVAL '1 month'
+    `, [new Date().toISOString(), Number(zone_id), sanitizeString(member_code, 20)]);
+    
+    if (resUpdate.rowCount === 0) {
+      return res.status(404).json({ error: 'Member kunjungan tidak ditemukan untuk zona ini' });
+    }
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('visit/close error:', err.message);
+    res.status(500).json({ error: 'Gagal memperbarui status kunjungan toko tutup' });
+  }
+});
+
 // POST /api/visit/cancel
 router.post('/visit/cancel', authenticate, requireSalesman, async (req, res) => {
   const { zone_id, member_code } = req.body;
@@ -276,7 +312,7 @@ router.post('/visit/cancel', authenticate, requireSalesman, async (req, res) => 
   try {
     const resUpdate = await db.query(`
       UPDATE visit_logs vl
-      SET visited = false, visited_at = z.scheduled_date::timestamp
+      SET visited = false, is_closed = false, visited_at = z.scheduled_date::timestamp
       FROM zones z
       WHERE vl.zone_id = z.id
         AND vl.zone_id = $1 
@@ -308,7 +344,7 @@ router.get('/zone/:id/visits', authenticate, requireSupervisorOrAbove, async (re
     const zone = resZone.rows[0];
 
     const resVisits = await db.query(`
-      SELECT zm.member_code, zm.member_name, v.visited, v.visited_at, v.is_approved, v.approved_at
+      SELECT zm.member_code, zm.member_name, v.visited, v.is_closed, v.visited_at, v.is_approved, v.approved_at
       FROM zone_members zm
       JOIN visit_logs v ON zm.zone_id = v.zone_id AND zm.member_code = v.member_code
       WHERE zm.zone_id = $1
