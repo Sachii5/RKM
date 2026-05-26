@@ -38,6 +38,7 @@ CREATE TABLE visit_logs (
     zone_id INTEGER NOT NULL REFERENCES zones(id) ON DELETE CASCADE,
     member_code VARCHAR(50) NOT NULL,
     visited BOOLEAN DEFAULT FALSE,
+    is_closed BOOLEAN DEFAULT FALSE,
     visited_at TIMESTAMP,
     is_approved BOOLEAN DEFAULT FALSE,
     approved_at TIMESTAMP,

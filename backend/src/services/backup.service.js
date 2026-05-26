@@ -35,18 +35,14 @@ const performResetAndBackup = async () => {
   // Write backup data to JSON file
   fs.writeFileSync(backupPath, JSON.stringify(backupData, null, 2));
 
-  // 2. Clear all active zone data in a transaction
+  // 2. Soft delete all active zones to free up members but keep history for evaluation
   const client = await db.connect();
   try {
     await client.query('BEGIN');
-    await client.query('DELETE FROM visit_logs');
-    await client.query('DELETE FROM zone_members');
-    await client.query('DELETE FROM zones');
     
-    // Reset sequences in PostgreSQL
-    await client.query('ALTER SEQUENCE zones_id_seq RESTART WITH 1');
-    await client.query('ALTER SEQUENCE zone_members_id_seq RESTART WITH 1');
-    await client.query('ALTER SEQUENCE visit_logs_id_seq RESTART WITH 1');
+    // Mark all active zones as deleted. This removes them from active lists and frees up the members,
+    // but preserves the visit_logs and zone records so the Manager Dashboard still works.
+    await client.query(`UPDATE zones SET status = 'deleted' WHERE status = 'active'`);
     
     await client.query('COMMIT');
   } catch (e) {
