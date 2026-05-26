@@ -135,12 +135,12 @@
                   <div class="mt-4">
                     <div class="flex justify-between text-xs text-gray-500 mb-1">
                       <span>Progress Kunjungan (Selesai/Total)</span>
-                      <span>{{ zone.total_member > 0 ? Math.round((zone.visited_count / zone.total_member) * 100) : 0 }}%</span>
+                      <span>{{ progressPct(zone) }}%</span>
                     </div>
                     <div class="progress-bar">
                       <div
                         class="progress-fill"
-                        :style="{ width: zone.total_member > 0 ? Math.round((zone.visited_count / zone.total_member) * 100) + '%' : '0%' }"
+                        :style="{ width: progressPct(zone) + '%' }"
                       ></div>
                     </div>
                   </div>
@@ -265,6 +265,14 @@ const formatRupiah = (angka) => {
     currency: 'IDR',
     minimumFractionDigits: 0
   }).format(angka || 0);
+}
+
+const progressPct = (z) => {
+  if (!z.total_member) return 0
+  const v = parseInt(z.visited_count || 0)
+  const p = parseInt(z.pending_approval_count || 0)
+  const c = parseInt(z.closed_count || 0)
+  return Math.round(((v + p + c) / z.total_member) * 100)
 }
 
 const formatStatus = (zone) => {

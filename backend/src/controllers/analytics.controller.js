@@ -53,9 +53,15 @@ const getMonthlyEvaluation = async (req, res) => {
     orders.forEach(o => {
       if (!memberOrdersMap[o.kode_member]) memberOrdersMap[o.kode_member] = [];
       if (o.harga_total_item > 0) {
-        memberOrdersMap[o.kode_member].push(dayjs(o.tgl_order).startOf('day'));
+        memberOrdersMap[o.kode_member].push({
+          date: dayjs(o.tgl_order).startOf('day'),
+          total_rupiah: parseFloat(o.harga_total_item) || 0
+        });
       }
     });
+
+    // Urutkan kunjungan berdasarkan waktu secara ascending agar order dikaitkan ke kunjungan terawal
+    visitRows.sort((a, b) => new Date(a.visited_at) - new Date(b.visited_at));
 
     // 4. Stitch data & Kalkulasi Agregasi
     const salesmanMap = {};
@@ -73,7 +79,8 @@ const getMonthlyEvaluation = async (req, res) => {
           total_visited: 0,
           total_closed: 0,
           total_approved: 0,
-          closing_order: 0
+          closing_order: 0,
+          total_rupiah: 0
         };
       }
 
@@ -105,15 +112,24 @@ const getMonthlyEvaluation = async (req, res) => {
       if (is_approved === true && is_closed !== true) stat.total_approved++;
       
       if (isSuccess) {
-        
-        // Cek apakah ada order pada hari H kunjungan atau setelahnya
-        const hasOrder = (memberOrdersMap[member_code] || []).some(orderDate => {
-          return orderDate.isSame(visitDate) || orderDate.isAfter(visitDate);
-        });
+        let visitOrderTotal = 0;
+        let hasOrder = false;
+
+        // Cek order pada hari H kunjungan atau setelahnya, lalu hapus dari map agar tidak dihitung ganda
+        const ordersForMember = memberOrdersMap[member_code] || [];
+        for (let i = ordersForMember.length - 1; i >= 0; i--) {
+          const order = ordersForMember[i];
+          if (order.date.isSame(visitDate) || order.date.isAfter(visitDate)) {
+            hasOrder = true;
+            visitOrderTotal += order.total_rupiah;
+            ordersForMember.splice(i, 1);
+          }
+        }
         
         if (hasOrder) {
           stat.closing_order++;
           dailyStat.closing_order++;
+          stat.total_rupiah += visitOrderTotal;
         }
       }
     });
