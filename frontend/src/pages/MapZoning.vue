@@ -141,6 +141,10 @@
           <span>Pernah dipilih, belum dikunjungi</span>
         </div>
         <div class="legend-item">
+          <img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-black.png" alt="Black" /> 
+          <span>Toko Tutup (Bisa dipilih ulang)</span>
+        </div>
+        <div class="legend-item">
           <img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png" alt="Red" /> 
           <span>Member Sleeper</span>
         </div>
@@ -180,7 +184,8 @@ const icons = {
   green: createIcon('green'),
   yellow: createIcon('gold'),
   red: createIcon('red'),
-  blue: createIcon('blue')
+  blue: createIcon('blue'),
+  black: createIcon('black')
 }
 
 // Form State
@@ -198,6 +203,7 @@ const form = ref({
 const allMembers = ref([])
 const zonedMemberCodes = ref(new Set())
 const unvisitedMemberCodes = ref(new Set())
+const closedMemberCodes = ref(new Set())
 const previewResult = ref(null)
 const selectedMemberIds = ref([])
 const loading = ref(false)
@@ -248,9 +254,11 @@ const fetchMembers = async () => {
     if (Array.isArray(zonedRes.data)) {
       zonedMemberCodes.value = new Set(zonedRes.data)
       unvisitedMemberCodes.value = new Set()
+      closedMemberCodes.value = new Set()
     } else {
       zonedMemberCodes.value = new Set(zonedRes.data.zoned || [])
       unvisitedMemberCodes.value = new Set(zonedRes.data.unvisited || [])
+      closedMemberCodes.value = new Set(zonedRes.data.closed || [])
     }
 
     const parsed = membersRes.data
@@ -390,27 +398,30 @@ const drawMapEntities = (skipFitBounds = false) => {
     previewResult.value.members = allMembers.value.filter(m => selectedSet.has(m.cus_kodemember))
   }
 
-  // 3. Define 4 pin groups: green (selected), grey (not selected), blue (already zoned), orange (unvisited)
+  // 3. Define 5 pin groups: green (selected), grey (not selected), blue (already zoned), orange (unvisited), black (closed)
   let dGrey = []
   let dBlue = []
   let dGreen = []
   let dOrange = []
+  let dBlack = []
 
   if (previewResult.value) {
     // Any member that is selected (checked) → green, regardless of origin
     const selectedSet = new Set(selectedMemberIds.value)
     dGreen = allMembers.value.filter(m => selectedSet.has(m.cus_kodemember))
     
-    // Remaining → blue (already zoned), orange (unvisited) or grey (available)
+    // Remaining → blue (already zoned), orange (unvisited), black (closed), or grey (available)
     const rest = allMembers.value.filter(m => !selectedSet.has(m.cus_kodemember))
     dBlue = rest.filter(m => zonedMemberCodes.value.has(m.cus_kodemember))
     dOrange = rest.filter(m => unvisitedMemberCodes.value.has(m.cus_kodemember))
-    dGrey = rest.filter(m => !zonedMemberCodes.value.has(m.cus_kodemember) && !unvisitedMemberCodes.value.has(m.cus_kodemember))
+    dBlack = rest.filter(m => closedMemberCodes.value.has(m.cus_kodemember))
+    dGrey = rest.filter(m => !zonedMemberCodes.value.has(m.cus_kodemember) && !unvisitedMemberCodes.value.has(m.cus_kodemember) && !closedMemberCodes.value.has(m.cus_kodemember))
   } else {
     // No preview yet
     dBlue = allMembers.value.filter(m => zonedMemberCodes.value.has(m.cus_kodemember))
     dOrange = allMembers.value.filter(m => unvisitedMemberCodes.value.has(m.cus_kodemember))
-    dGrey = allMembers.value.filter(m => !zonedMemberCodes.value.has(m.cus_kodemember) && !unvisitedMemberCodes.value.has(m.cus_kodemember))
+    dBlack = allMembers.value.filter(m => closedMemberCodes.value.has(m.cus_kodemember))
+    dGrey = allMembers.value.filter(m => !zonedMemberCodes.value.has(m.cus_kodemember) && !unvisitedMemberCodes.value.has(m.cus_kodemember) && !closedMemberCodes.value.has(m.cus_kodemember))
   }
 
   // Global handler for popup button clicks (Leaflet popups are raw HTML, no Vue bindings)
@@ -464,6 +475,13 @@ const drawMapEntities = (skipFitBounds = false) => {
   dOrange.forEach(m => {
     const icon = m.is_sleeper ? icons.red : icons.yellow
     const label = m.is_sleeper ? '<i class="fa-solid fa-circle" style="color: gold;"></i> Pernah dipilih, belum dikunjungi (Sleeper)' : '<i class="fa-solid fa-circle" style="color: gold;"></i> Pernah dipilih, belum dikunjungi'
+    L.marker([m.lat, m.lng], { icon })
+      .bindPopup(buildPopup(m, label))
+      .addTo(markersLayer)
+  })
+  dBlack.forEach(m => {
+    const icon = m.is_sleeper ? icons.red : icons.black
+    const label = m.is_sleeper ? '<i class="fa-solid fa-circle" style="color: black;"></i> Toko Tutup, bisa dipilih lagi (Sleeper)' : '<i class="fa-solid fa-circle" style="color: black;"></i> Toko Tutup, bisa dipilih lagi'
     L.marker([m.lat, m.lng], { icon })
       .bindPopup(buildPopup(m, label))
       .addTo(markersLayer)

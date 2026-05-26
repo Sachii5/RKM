@@ -38,7 +38,7 @@ export const useAuthStore = defineStore('auth', {
     },
     isFirstLogin() {
       const u = this.user;
-      return u ? u.first_login === 1 : false;
+      return u ? (u.first_login === 1 || u.first_login === true) : false;
     }
   },
   actions: {

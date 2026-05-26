@@ -189,7 +189,10 @@ router.get('/zones/mine', authenticate, requireSalesman, async (req, res) => {
 router.get('/zones/member-codes', authenticate, requireSupervisorOrAbove, async (req, res) => {
   try {
     const resRows = await db.query(`
-      SELECT zm.member_code, COALESCE(bool_or(vl.visited), false) as max_visited
+      SELECT zm.member_code, 
+             COALESCE(bool_or(vl.visited = true AND vl.is_closed = false), false) as max_visited,
+             COALESCE(bool_or(vl.visited = true AND vl.is_closed = true), false) as is_closed,
+             COALESCE(bool_or(vl.visited = false), false) as is_unvisited
       FROM zone_members zm
       JOIN zones z ON z.id = zm.zone_id
       LEFT JOIN visit_logs vl ON vl.zone_id = zm.zone_id AND vl.member_code = zm.member_code
@@ -201,12 +204,15 @@ router.get('/zones/member-codes', authenticate, requireSupervisorOrAbove, async 
     
     const zoned = [];
     const unvisited = [];
+    const closed = [];
+    
     resRows.rows.forEach(r => {
-      if (r.max_visited === true) zoned.push(r.member_code);
+      if (r.is_closed === true) closed.push(r.member_code);
+      else if (r.max_visited === true) zoned.push(r.member_code);
       else unvisited.push(r.member_code);
     });
     
-    res.json({ zoned, unvisited });
+    res.json({ zoned, unvisited, closed });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
