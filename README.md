@@ -1,100 +1,80 @@
-# ISReport v2
+# isreport-v2: RKM Route Tracking & Order Evaluation System
 
-Sistem Single Page Application (SPA) untuk tracking rute kunjungan salesman dan monitoring evaluasi order di Stock Point Indogrosir.
+isreport-v2 adalah sistem *Single Page Application* (SPA) yang dirancang untuk pelacakan rute kunjungan *salesman* (RKM) dan pemantauan evaluasi order di Stock Point Indogrosir. Aplikasi ini dibangun dengan pendekatan UI/UX *Mobile-First*, memastikan antarmuka yang responsif, ringan, dan sangat efisien saat digunakan oleh *salesman* langsung di lapangan.
 
 ## Arsitektur Database
 
-ISReport v2 menggunakan arsitektur **Dual-Database** untuk memisahkan beban baca data operasional dan master:
+Sistem ini digerakkan oleh arsitektur **Dual-Database** untuk memisahkan lalu lintas operasional dengan data inti perusahaan:
 
-1. **Master Database (PostgreSQL - Kantor)**
-   - Bersifat **Read-Only**.
-   - Bertindak sebagai *Single Source of Truth* untuk data pelanggan, wilayah, dan riwayat transaksi (Order Closing).
-
-2. **Operational Database (PostgreSQL - Lokal)**
-   - Bersifat **Read-Write**.
-   - Digunakan untuk menampung data operasional harian seperti Zoning, Rute Kunjungan, dan Visit Logs.
-   - **Table Partitioning**: Tabel `visit_logs` menggunakan strategi partisi otomatis berbasis *range* (bulanan) pada kolom `visited_at`. Pendekatan ini memastikan tabel tetap ringan, pencarian data spesifik menjadi lebih cepat, dan *maintenance* arsip bulanan tidak membebani performa aplikasi secara keseluruhan.
+- **Master Database (PostgreSQL - Jaringan Internal)**
+  Bersifat *Read-Only*. Basis data ini digunakan sebagai *source of truth* untuk validasi data pelanggan dan riwayat transaksi (Order Closing).
+- **Operational Database (PostgreSQL - Lokal)**
+  Bersifat *Read-Write*. Basis data ini dikhususkan untuk menampung seluruh data operasional harian (Zoning, Visit Logs). Tabel log kunjungan (*visit_logs*) dirancang menggunakan mekanisme **Table Partitioning per bulan** guna mempertahankan performa operasi baca dan tulis yang optimal pada volume data besar.
 
 ## Tech Stack
 
-Proyek ini dibangun di atas ekosistem modern berikut:
+Sistem dikembangkan di atas tumpukan teknologi berikut:
 
 **Frontend:**
-- **Vue 3** & **Vite**
-- **Pinia** (State Management)
-- **TailwindCSS** (Styling UI)
-- **Chart.js** (Dashboard Visualisasi)
-- **Leaflet** (Integrasi Peta Interaktif)
+- Vue 3 (Composition API)
+- Vite
+- Pinia
+- TailwindCSS
+- Chart.js
+- Leaflet
 
 **Backend:**
-- **Node.js** & **Express**
-- **pg** (PostgreSQL Client)
-- **JWT** (JSON Web Token Authentication)
+- Node.js
+- Express
+- pg (PostgreSQL Client)
+- JWT (JSON Web Tokens)
 
 ## Prasyarat (Prerequisites)
 
-Sebelum melakukan *deploy* atau pengembangan, pastikan *environment* telah memenuhi prasyarat berikut:
-1. **Node.js** (v18.0 atau lebih baru)
-2. **PostgreSQL** (v12.0 atau lebih baru)
+Pastikan lingkungan (*environment*) pengembangan berikut telah terpasang di sistem Anda:
+- Node.js
+- Git
+- PostgreSQL Server aktif
 
-## Cara Instalasi & Setup Environment
+## Panduan Instalasi & Setup Environment
 
-Ikuti langkah-langkah di bawah ini untuk menjalankan aplikasi dari awal:
+Ikuti langkah-langkah bernomor berikut untuk menginisialisasi aplikasi dari nol:
 
-1. **Clone repository dan Install Dependencies**
-   Masuk ke folder `backend` dan `frontend`, kemudian jalankan `npm install` di masing-masing folder.
+1. **Clone Repository & Instalasi Dependensi**
+   Kloning *repository* ke direktori lokal Anda, lalu jalankan `npm install` pada folder `frontend` dan `backend`.
    ```bash
-   cd backend
+   git clone <repository_url> isreport-v2
+   cd isreport-v2/frontend
    npm install
-   cd ../frontend
+   cd ../backend
    npm install
    ```
 
-2. **Konfigurasi Environment Backend**
-   Masuk ke folder `backend`, lalu salin template `.env.example` menjadi `.env`.
-   ```bash
-   cd backend
-   cp .env.example .env
-   ```
-   Buka file `.env` dan lengkapi kredensial database operasional Anda:
-   ```env
-   PORT=3000
-   DB_OPS_HOST=localhost
-   DB_OPS_PORT=5432
-   DB_OPS_USER=postgres
-   DB_OPS_PASS=password_anda
-   DB_OPS_NAME=isreport_ops
-   ```
+2. **Konfigurasi Environment**
+   Buka folder `backend`, duplikasi file `.env.example` menjadi `.env`, lalu isi seluruh kredensial koneksi database untuk PostgreSQL operasional lokal dan PostgreSQL master (Internal).
 
-3. **Inisialisasi Tabel (DDL Schema)**
-   Pastikan PostgreSQL sudah menyala dan Anda telah membuat database `isreport_ops` yang kosong. Lalu jalankan perintah inisialisasi untuk mengeksekusi skema tabel ke dalam database:
+3. **Pembuatan Database**
+   Buat sebuah basis data (*database*) kosong bernama `isreport_ops` secara manual menggunakan *pgAdmin* atau CLI `psql`.
+
+4. **Inisialisasi Tabel Operasional**
+   Masih di dalam folder `backend`, jalankan perintah berikut untuk mengeksekusi migrasi skema tabel operasional dan pembuat partisi bulanannya:
    ```bash
    npm run db:init
    ```
 
-## Cara Migrasi Data Historis (Legacy Data)
+## Injeksi Data Historis
 
-Apabila Anda perlu memindahkan data operasional dari versi lawas (berbasis file SQLite) ke database PostgreSQL operasional yang baru, gunakan perintah migrasi berikut pada direktori `backend/`:
+Untuk memasukkan data log kunjungan lama ke dalam PostgreSQL lokal, jalankan perintah berikut di dalam folder `backend`:
 
 ```bash
-npm run db:migrate-legacy <path_ke_file_sqlite_anda>
+npm run db:migrate-legacy <path_ke_file_historis>
 ```
-> **Penting:** Proses migrasi ini dirancang sangat aman untuk dieksekusi berkali-kali jika terjadi kegagalan sebagian (partial failure). Script ini sudah dilengkapi dengan mekanisme perlindungan **Anti-Duplikasi (ON CONFLICT DO NOTHING)** sehingga data yang sudah ada tidak akan tercatat ganda.
+*Catatan:* Proses ini beroperasi dengan mekanisme Anti-Duplikasi (`ON CONFLICT`). Oleh karena itu, perintah ini sangat aman untuk dijalankan berulang kali untuk melakukan sinkronisasi dengan *file* yang berbeda tanpa risiko adanya *row* atau entri ganda.
 
 ## Menjalankan Aplikasi
 
-Jalankan perintah berikut di dua tab/jendela terminal yang terpisah agar *log* dapat terpantau dengan jelas.
+Untuk menjalankan *server backend* dan *frontend* secara bersamaan (mode *development*), eksekusi perintah berikut:
 
-**Terminal 1 (Backend):**
 ```bash
-cd backend
 npm run dev
 ```
-
-**Terminal 2 (Frontend):**
-```bash
-cd frontend
-npm run dev
-```
-
-Aplikasi web dapat diakses pada `http://localhost:5173`.
