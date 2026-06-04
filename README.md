@@ -1,6 +1,10 @@
 # RKM: Route Tracking & Order Evaluation System
 
+<<<<<<< HEAD
+isreport-v2 adalah sistem *Single Page Application* (SPA) yang dirancang untuk pelacakan rute kunjungan *salesman* (RKM) dan pemantauan evaluasi order di Stock Point Indogrosir. Aplikasi ini dibangun dengan pendekatan UI/UX *Mobile-First*, memastikan antarmuka yang responsif, ringan, dan sangat efisien saat digunakan oleh *salesman* langsung di lapangan.
+=======
 RKM adalah sistem *Single Page Application* (SPA) yang dirancang untuk pelacakan rute kunjungan *salesman* (RKM) dan pemantauan evaluasi order di Stock Point Indogrosir. Aplikasi ini dibangun dengan pendekatan UI/UX *Mobile-First*, memastikan antarmuka yang responsif, ringan, dan sangat efisien saat digunakan oleh *salesman* langsung di lapangan.
+>>>>>>> 9354464e001ae6b3d4892caaf90c1aaaf34889d9
 
 ## Arsitektur Database
 
@@ -43,8 +47,13 @@ Ikuti langkah-langkah bernomor berikut untuk menginisialisasi aplikasi dari nol:
 1. **Clone Repository & Instalasi Dependensi**
    Kloning *repository* ke direktori lokal Anda, lalu jalankan `npm install` pada folder `frontend` dan `backend`.
    ```bash
+<<<<<<< HEAD
+   git clone <repository_url> isreport-v2
+   cd isreport-v2/frontend
+=======
    git clone <repository_url> RKM
    cd RKM/frontend
+>>>>>>> 9354464e001ae6b3d4892caaf90c1aaaf34889d9
    npm install
    cd ../backend
    npm install
@@ -54,7 +63,11 @@ Ikuti langkah-langkah bernomor berikut untuk menginisialisasi aplikasi dari nol:
    Buka folder `backend`, duplikasi file `.env.example` menjadi `.env`, lalu isi seluruh kredensial koneksi database untuk PostgreSQL operasional lokal dan PostgreSQL master (Internal).
 
 3. **Pembuatan Database**
+<<<<<<< HEAD
+   Buat sebuah basis data (*database*) kosong bernama `isreport_ops` secara manual menggunakan *pgAdmin* atau CLI `psql`.
+=======
    Buat sebuah basis data (*database*) kosong bernama `rkmspi` secara manual menggunakan *pgAdmin* atau CLI `psql`.
+>>>>>>> 9354464e001ae6b3d4892caaf90c1aaaf34889d9
 
 4. **Inisialisasi Tabel Operasional**
    Masih di dalam folder `backend`, jalankan perintah berikut untuk mengeksekusi migrasi skema tabel operasional dan pembuat partisi bulanannya:

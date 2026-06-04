@@ -28,7 +28,7 @@ const routes = [
   { 
     path: '/reset', 
     component: ResetPage, 
-    meta: { requiresAuth: true, allowedRoles: ['ADMIN'] } 
+    meta: { requiresAuth: true, allowedRoles: ['ADMIN', 'SUPERVISOR'] } 
   },
   { 
     path: '/zones', 

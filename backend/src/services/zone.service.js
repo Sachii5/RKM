@@ -13,13 +13,13 @@ const checkConflict = async (salesmanCode, scheduledDate) => {
 // Helper: Get all member codes that are already assigned to any active zone AND have been visited/approved
 const getAlreadyZonedMemberCodes = async () => {
   const res = await db.query(`
-    SELECT zm.member_code, COALESCE(bool_or(vl.visited), false) as max_visited
+    SELECT zm.member_code
     FROM zone_members zm
     JOIN zones z ON z.id = zm.zone_id
     LEFT JOIN visit_logs vl ON vl.zone_id = zm.zone_id AND vl.member_code = zm.member_code
     WHERE z.status = 'active'
     GROUP BY zm.member_code
-    HAVING COALESCE(bool_or(vl.visited), false) = true
+    HAVING bool_or(vl.visited = true AND vl.is_closed = true) IS NOT TRUE
   `);
   return new Set(res.rows.map(r => r.member_code));
 };

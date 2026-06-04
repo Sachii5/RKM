@@ -114,6 +114,10 @@
                       <span class="detail-value text-blue-500 font-bold">{{ zone.pending_approval_count ?? 0 }}</span>
                     </div>
                     <div class="detail-row">
+                      <span class="detail-label"><i class="fa-solid fa-store-slash fa-fw" style="color:#ef4444;"></i> Toko Tutup:</span>
+                      <span class="detail-value text-red-500 font-bold">{{ zone.closed_count ?? 0 }}</span>
+                    </div>
+                    <div class="detail-row">
                       <span class="detail-label"><i class="fa-regular fa-circle fa-fw" style="color:#f97316;"></i> Belum Dikunjungi:</span>
                       <span class="detail-value text-orange-500 font-bold">{{ zone.pending_count ?? 0 }}</span>
                     </div>
@@ -131,12 +135,12 @@
                   <div class="mt-4">
                     <div class="flex justify-between text-xs text-gray-500 mb-1">
                       <span>Progress Kunjungan (Selesai/Total)</span>
-                      <span>{{ zone.total_member > 0 ? Math.round((zone.visited_count / zone.total_member) * 100) : 0 }}%</span>
+                      <span>{{ progressPct(zone) }}%</span>
                     </div>
                     <div class="progress-bar">
                       <div
                         class="progress-fill"
-                        :style="{ width: zone.total_member > 0 ? Math.round((zone.visited_count / zone.total_member) * 100) + '%' : '0%' }"
+                        :style="{ width: progressPct(zone) + '%' }"
                       ></div>
                     </div>
                   </div>
@@ -191,6 +195,7 @@
                 <td class="px-5 py-3 text-sm font-mono text-gray-500 bg-gray-50/50">{{ v.member_code }}</td>
                 <td class="px-5 py-3 text-sm">
                   <span v-if="v.is_approved === true" class="bg-emerald-100/60 text-emerald-700 py-1 px-3 rounded-full text-xs font-bold border border-emerald-200"><i class="fa-solid fa-circle-check mr-1"></i>Selesai</span>
+                  <span v-else-if="v.is_closed === true" class="bg-red-100/60 text-red-700 py-1 px-3 rounded-full text-xs font-bold border border-red-200"><i class="fa-solid fa-store-slash mr-1"></i>Tutup</span>
                   <span v-else-if="v.visited === true" class="bg-blue-100/60 text-blue-700 py-1 px-3 rounded-full text-xs font-bold border border-blue-200"><i class="fa-solid fa-hourglass-half mr-1"></i>Menunggu</span>
                   <span v-else class="bg-gray-100 text-gray-500 py-1 px-3 rounded-full text-xs font-bold border border-gray-200"><i class="fa-regular fa-circle mr-1"></i>Belum</span>
                 </td>
@@ -204,7 +209,7 @@
                 </td>
                 <td class="px-5 py-3 text-center">
                   <button 
-                    v-if="v.visited === true && v.is_approved === false" 
+                    v-if="v.visited === true && v.is_closed === false && v.is_approved === false" 
                     @click="approveVisit(v.member_code)"
                     class="bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm transition-colors text-xs font-medium py-1.5 px-4 rounded-lg"
                     :disabled="approving[v.member_code]"
@@ -262,13 +267,22 @@ const formatRupiah = (angka) => {
   }).format(angka || 0);
 }
 
+const progressPct = (z) => {
+  if (!z.total_member) return 0
+  const v = parseInt(z.visited_count || 0)
+  const p = parseInt(z.pending_approval_count || 0)
+  const c = parseInt(z.closed_count || 0)
+  return Math.round(((v + p + c) / z.total_member) * 100)
+}
+
 const formatStatus = (zone) => {
   const p = zone.pending_count ?? 0
   const pv = zone.pending_approval_count ?? 0
   const v = zone.visited_count ?? 0
+  const c = zone.closed_count ?? 0
   if (p === 0 && pv === 0 && v > 0) return 'Selesai'
   if (pv > 0) return `Menunggu Konfirmasi (${pv})`
-  if (v > 0) return `Berjalan (${v}/${zone.total_member})`
+  if (v > 0 || c > 0) return `Berjalan (${v}/${zone.total_member})`
   return 'Belum Dimulai'
 }
 

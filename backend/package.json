@@ -7,17 +7,16 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "db:init": "psql -U postgres -d isreport_ops -f database/schema.sql",
-    "db:migrate-legacy": "node scripts/migrate-data.js",
     "test": "jest --coverage"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
-    "better-sqlite3": "^12.10.0",
     "cors": "^2.8.6",
     "dayjs": "^1.11.19",
     "dotenv": "^16.6.1",
     "express": "^4.21.1",
     "jsonwebtoken": "^9.0.3",
+    "node-cron": "^4.2.1",
     "pg": "^8.21.0"
   },
   "devDependencies": {
