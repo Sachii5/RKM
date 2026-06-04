@@ -73,9 +73,9 @@
           <router-link to="/zones" class="btn btn-primary" style="background: #06b6d4;">Lihat Zona Saya</router-link>
         </div>
 
-        <div v-if="auth.role === 'ADMIN'" class="card bg-gradient-to-br from-red-50 to-white">
+        <div v-if="auth.role === 'ADMIN' || auth.role === 'SUPERVISOR'" class="card bg-gradient-to-br from-red-50 to-white">
           <h2 class="font-bold mb-2 text-red-700"><i class="fa-solid fa-triangle-exclamation"></i> Reset rute RKM</h2>
-          <p class="text-gray-500 text-sm mb-4">Akses terbatas untuk Admin. Operasi Atur Ulang Sistem akan menghapus seluruh data yang tersimpan.</p>
+          <p class="text-gray-500 text-sm mb-4">Akses terbatas untuk Admin & Supervisor. Operasi Atur Ulang Sistem akan menghapus seluruh rute zona operasional.</p>
           <router-link to="/reset" class="btn btn-danger">Atur Ulang Sistem</router-link>
         </div>
 

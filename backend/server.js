@@ -4,6 +4,17 @@ require('dotenv').config();
 
 const apiRoutes = require('./src/routes/api');
 const authRoutes = require('./src/routes/auth');
+const cron = require('node-cron');
+const { createNextPartitions } = require('./src/utils/partitionManager');
+
+// Menjalankan pembuatan partisi saat server pertama kali di-start
+createNextPartitions();
+
+// Menjadwalkan pengecekan partisi setiap tanggal 1, jam 00:00 (tengah malam)
+cron.schedule('0 0 1 * *', () => {
+  console.log('[Cron] Menjalankan pengecekan rutin partisi bulanan...');
+  createNextPartitions();
+});
 
 const app = express();
 const PORT = process.env.PORT || 3000;

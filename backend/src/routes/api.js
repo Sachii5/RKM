@@ -409,8 +409,8 @@ router.post('/visit/approve', authenticate, requireSupervisorOrAbove, async (req
   }
 });
 
-// POST /api/reset (Admin Only)
-router.post('/reset', authenticate, requireAdmin, async (req, res) => {
+// POST /api/reset (Admin & Supervisor)
+router.post('/reset', authenticate, requireSupervisorOrAbove, async (req, res) => {
   try {
     const backupFilename = await performResetAndBackup();
     res.json({ success: true, backupFilename });
