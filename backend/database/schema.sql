@@ -56,3 +56,20 @@ CREATE TABLE audit_logs (
     target_id VARCHAR(50),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE visit_surveys (
+    id SERIAL PRIMARY KEY,
+    visit_id INTEGER NOT NULL,
+    member_code VARCHAR(50) NOT NULL,
+    advisor_name VARCHAR(100),
+    kendala_belanja JSONB,
+    produk_mahal JSONB,
+    produk_belum_ada TEXT,
+    sumber_info_promo JSONB,
+    promo_menarik VARCHAR(150),
+    perlu_kunjungan_rutin VARCHAR(50),
+    saran_kritik TEXT,
+    berhasil_order VARCHAR(50),
+    foto_kunjungan_url VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

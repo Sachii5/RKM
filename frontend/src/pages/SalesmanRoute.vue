@@ -46,7 +46,7 @@
           
           <button 
             v-if="member.visited === false" 
-            @click="markVisited(member.member_code)" 
+            @click="openSurvey(member)" 
             class="btn btn-primary w-full text-sm py-2 mb-2"
           >
             Tandai Selesai
@@ -76,6 +76,15 @@
       <div id="route-map" class="flex-1 map-container shadow-md border rounded overflow-hidden" style="height: 100%; min-height: 500px; z-index: 1;"></div>
 
     </div>
+    
+    <!-- Survey Modal -->
+    <SurveyForm 
+      :show="showSurveyModal" 
+      :visitId="selectedVisitId" 
+      :memberCode="selectedMemberCode" 
+      @close="closeSurvey" 
+      @submit="handleSurveySubmit" 
+    />
   </div>
 </template>
 
@@ -86,6 +95,8 @@ import 'leaflet/dist/leaflet.css'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 import dayjs from 'dayjs'
+import 'dayjs/locale/id'
+import SurveyForm from '../components/SurveyForm.vue'
 
 const auth = useAuthStore()
 const loading = ref(true)
@@ -190,25 +201,40 @@ const drawRoute = () => {
   }
 }
 
-const markVisited = async (memberCode) => {
+const showSurveyModal = ref(false)
+const selectedVisitId = ref(null)
+const selectedMemberCode = ref(null)
+
+const openSurvey = (member) => {
+  selectedVisitId.value = member.visit_id
+  selectedMemberCode.value = member.member_code
+  showSurveyModal.value = true
+}
+
+const closeSurvey = () => {
+  showSurveyModal.value = false
+  selectedVisitId.value = null
+  selectedMemberCode.value = null
+}
+
+const handleSurveySubmit = async () => {
+  // Setelah survei sukses, panggil mark api untuk ubah status visited
   try {
     await axios.post('/api/visit/mark', {
       zone_id: zoneInfo.value.id,
-      member_code: memberCode
+      member_code: selectedMemberCode.value
     }, {
       headers: { Authorization: `Bearer ${auth.token}` }
     })
     
-    const target = routeMembers.value.find(m => m.member_code === memberCode)
+    const target = routeMembers.value.find(m => m.member_code === selectedMemberCode.value)
     if (target) {
       target.visited = true
     }
     drawRoute()
-
-    // Open Google Form for visit report
-    window.open('https://docs.google.com/forms/d/e/1FAIpQLSdjnaN3izPWDnK0GT3kqmoFxq4ga5eAA2pdyQGL0xv38SQqwg/viewform', '_blank')
+    closeSurvey()
   } catch (err) {
-    alert(err.response?.data?.error || 'Gagal memperbarui status')
+    alert(err.response?.data?.error || 'Survei tersimpan, namun gagal memperbarui status kunjungan')
   }
 }
 

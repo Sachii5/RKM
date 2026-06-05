@@ -42,6 +42,10 @@ app.use(cors({
 // Security: Limit request body size to prevent payload attacks
 app.use(express.json({ limit: '1mb' }));
 
+// Serve static files for uploaded images
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Security: Basic rate limiting for auth routes (brute-force protection)
 const loginAttempts = new Map();
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes

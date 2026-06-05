@@ -12,6 +12,30 @@ const { getMonthlyEvaluation } = require('../controllers/analytics.controller');
 const authenticate = require('../middleware/auth.middleware');
 const { requireSupervisorOrAbove, requireSalesman, requireAdmin } = require('../middleware/role.middleware');
 
+const multer = require('multer');
+const path = require('path');
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, '../../uploads/surveys/'));
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'survey-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Hanya file gambar yang diperbolehkan!'));
+    }
+  }
+});
+
 // === Input Validation Helpers ===
 const isValidDateFormat = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d);
 const isValidSalesmanCode = (s) => typeof s === 'string' && /^[A-Z]{2,5}$/i.test(s.trim());
@@ -406,6 +430,85 @@ router.post('/visit/approve', authenticate, requireSupervisorOrAbove, async (req
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Gagal menyetujui kunjungan' });
+  }
+});
+
+// POST /api/upload/survey-photo
+router.post('/upload/survey-photo', authenticate, requireSalesman, (req, res) => {
+  upload.single('photo')(req, res, function (err) {
+    if (err) {
+      return res.status(400).json({ error: err.message });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: 'Tidak ada file yang diunggah' });
+    }
+    const fileUrl = '/uploads/surveys/' + req.file.filename;
+    res.json({ url: fileUrl });
+  });
+});
+
+// POST /api/visit/:visit_id/survey
+router.post('/visit/:visit_id/survey', authenticate, requireSalesman, async (req, res) => {
+  const visit_id = req.params.visit_id;
+  const {
+    member_code,
+    kendala_belanja,
+    produk_mahal,
+    produk_belum_ada,
+    sumber_info_promo,
+    promo_menarik,
+    perlu_kunjungan_rutin,
+    saran_kritik,
+    berhasil_order,
+    foto_kunjungan_url
+  } = req.body;
+
+  const advisor_name = req.user.userid; // Get from JWT token
+
+  if (!visit_id || !member_code) {
+    return res.status(400).json({ error: 'visit_id dan member_code wajib diisi' });
+  }
+
+  try {
+    // Validasi eksistensi visit_id
+    const checkVisit = await db.query('SELECT id FROM visit_logs WHERE id = $1', [visit_id]);
+    if (checkVisit.rows.length === 0) {
+      return res.status(404).json({ error: 'Data kunjungan (visit_id) tidak valid atau tidak ditemukan' });
+    }
+
+    const query = `
+      INSERT INTO visit_surveys (
+        visit_id, member_code, advisor_name, kendala_belanja, produk_mahal, 
+        produk_belum_ada, sumber_info_promo, promo_menarik, 
+        perlu_kunjungan_rutin, saran_kritik, berhasil_order, foto_kunjungan_url
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      RETURNING id
+    `;
+    
+    // Konversi array ke format JSON string agar aman masuk kolom JSONB
+    const safeJsonb = (val) => JSON.stringify(Array.isArray(val) ? val : (val ? [val] : []));
+
+    const values = [
+      visit_id,
+      member_code,
+      advisor_name,
+      safeJsonb(kendala_belanja),
+      safeJsonb(produk_mahal),
+      produk_belum_ada || null,
+      safeJsonb(sumber_info_promo),
+      promo_menarik || null,
+      perlu_kunjungan_rutin || null,
+      saran_kritik || null,
+      berhasil_order || null,
+      foto_kunjungan_url || null
+    ];
+
+    const result = await db.query(query, values);
+    
+    res.json({ success: true, survey_id: result.rows[0].id });
+  } catch (err) {
+    console.error('Submit survey error:', err.message);
+    res.status(500).json({ error: 'Gagal menyimpan hasil survei' });
   }
 });
 
