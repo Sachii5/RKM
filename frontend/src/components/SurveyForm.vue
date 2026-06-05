@@ -1,9 +1,15 @@
 <template>
-  <div v-if="show" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 sm:p-6 overflow-hidden">
-    <div class="bg-white w-full max-w-3xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col relative overflow-hidden animate-fade-in border border-gray-100">
+  <Teleport to="body">
+    <div v-if="show" class="fixed inset-0 z-[9999] flex flex-col items-center justify-center sm:p-6">
+      
+      <!-- Backdrop -->
+      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="$emit('close')"></div>
+      
+      <!-- Modal Content -->
+      <div class="relative w-full h-full sm:h-auto max-w-3xl sm:max-h-[90vh] bg-white flex flex-col sm:rounded-2xl shadow-2xl overflow-hidden animate-fade-in sm:border border-gray-100">
       
       <!-- Header -->
-      <div class="px-6 py-5 border-b border-gray-100 bg-white sticky top-0 z-10 flex justify-between items-center">
+      <div class="px-4 sm:px-6 py-4 border-b border-gray-100 bg-white flex justify-between items-center shrink-0 z-10">
         <div>
           <h2 class="text-xl sm:text-2xl font-bold text-gray-800 tracking-tight">Evaluasi Kunjungan RKM</h2>
           <p class="text-sm text-gray-500 mt-1">Laporan untuk member: <strong class="text-blue-600">{{ memberCode }}</strong></p>
@@ -14,7 +20,7 @@
       </div>
 
       <!-- Body -->
-      <div class="p-6 overflow-y-auto flex-1 bg-gray-50/50">
+      <div class="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0 bg-gray-50/50">
         <form @submit.prevent="submitSurvey" class="space-y-6">
           
           <!-- Kendala belanja -->
@@ -151,7 +157,7 @@
       </div>
 
       <!-- Action Buttons -->
-      <div class="p-4 sm:p-6 border-t border-gray-100 bg-white flex flex-col sm:flex-row justify-end gap-3 z-10">
+      <div class="p-4 sm:p-6 border-t border-gray-100 bg-white flex flex-col sm:flex-row justify-end gap-3 shrink-0 z-10 mt-auto">
         <button @click="$emit('close')" type="button" class="btn bg-gray-100 hover:bg-gray-200 text-gray-700 w-full sm:w-auto order-2 sm:order-1 transition-colors">
           Batal
         </button>
@@ -166,10 +172,11 @@
 
     </div>
   </div>
+  </Teleport>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, watch, onUnmounted } from 'vue'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 
@@ -181,6 +188,18 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'submit'])
 const auth = useAuthStore()
+
+watch(() => props.show, (newVal) => {
+  if (newVal) {
+    document.body.style.overflow = 'hidden'
+  } else {
+    document.body.style.overflow = ''
+  }
+})
+
+onUnmounted(() => {
+  document.body.style.overflow = ''
+})
 
 const loading = ref(false)
 const fileName = ref('')
