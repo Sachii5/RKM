@@ -23,6 +23,9 @@
           <div class="nav-item">
             <router-link to="/evaluation" class="nav-link"><i class="fa-solid fa-chart-line fa-fw"></i> Laporan Evaluasi</router-link>
           </div>
+          <div class="nav-item">
+            <router-link to="/survey-analytics" class="nav-link"><i class="fa-solid fa-chart-pie fa-fw"></i> Analitik Survei</router-link>
+          </div>
         </template>
 
         <!-- Tautan Salesman -->
