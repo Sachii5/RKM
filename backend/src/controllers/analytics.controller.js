@@ -166,6 +166,131 @@ const getMonthlyEvaluation = async (req, res) => {
   }
 };
 
+const getSurveyAnalytics = async (req, res) => {
+  const { month, year, salesman } = req.query;
+  
+  // Default to current month/year if not provided
+  const now = new Date();
+  const m = month ? parseInt(month) : now.getMonth() + 1;
+  const y = year ? parseInt(year) : now.getFullYear();
+
+  if (isNaN(m) || m < 1 || m > 12 || isNaN(y) || y < 2000) {
+    return res.status(400).json({ error: 'Parameter month atau year tidak valid' });
+  }
+
+  const startDateStr = `${y}-${String(m).padStart(2, '0')}-01 00:00:00`;
+  const endDateStr = m === 12 
+    ? `${y + 1}-01-01 00:00:00` 
+    : `${y}-${String(m + 1).padStart(2, '0')}-01 00:00:00`;
+
+  let salesmanFilter = '';
+  let params = [startDateStr, endDateStr];
+  
+  if (salesman && salesman !== '') {
+    salesmanFilter = ` AND advisor_name = $3 `;
+    params.push(salesman);
+  }
+
+  try {
+    // 0. Fetch all Salesmen for the dropdown
+    const salesmenRes = await db.query(`
+      SELECT userid as id 
+      FROM users_local 
+      WHERE role = 'SALESMAN'
+      ORDER BY userid ASC
+    `);
+
+    // 1. Hit Rate (Berhasil Order)
+    const hitRateRes = await db.query(`
+      SELECT berhasil_order as label, COUNT(*) as count 
+      FROM visit_surveys 
+      WHERE berhasil_order IS NOT NULL
+        AND created_at >= $1::timestamp AND created_at < $2::timestamp
+        ${salesmanFilter}
+      GROUP BY berhasil_order
+    `, params);
+
+    // 2. Promo Preference
+    const promoRes = await db.query(`
+      SELECT promo_menarik as label, COUNT(*) as count 
+      FROM visit_surveys 
+      WHERE promo_menarik IS NOT NULL AND promo_menarik != ''
+        AND created_at >= $1::timestamp AND created_at < $2::timestamp
+        ${salesmanFilter}
+      GROUP BY promo_menarik
+    `, params);
+
+    // 3. Top Kendala Belanja (Extract from JSONB array)
+    const kendalaRes = await db.query(`
+      SELECT value AS label, COUNT(*) AS count
+      FROM visit_surveys, jsonb_array_elements_text(kendala_belanja)
+      WHERE created_at >= $1::timestamp AND created_at < $2::timestamp
+        ${salesmanFilter}
+      GROUP BY value
+      ORDER BY count DESC
+    `, params);
+
+    // 4. Top Produk Mahal (Extract from JSONB array)
+    const produkMahalRes = await db.query(`
+      SELECT value AS label, COUNT(*) AS count
+      FROM visit_surveys, jsonb_array_elements_text(produk_mahal)
+      WHERE created_at >= $1::timestamp AND created_at < $2::timestamp
+        ${salesmanFilter}
+      GROUP BY value
+      ORDER BY count DESC
+    `, params);
+
+    // 5. Recent Feedback (Saran Kritik & Produk Belum Ada)
+    const feedbackRes = await db.query(`
+      SELECT member_code, advisor_name, saran_kritik, produk_belum_ada, created_at 
+      FROM visit_surveys 
+      WHERE ((saran_kritik IS NOT NULL AND saran_kritik != '') 
+         OR (produk_belum_ada IS NOT NULL AND produk_belum_ada != ''))
+        AND created_at >= $1::timestamp AND created_at < $2::timestamp
+        ${salesmanFilter}
+      ORDER BY created_at DESC 
+      LIMIT 100
+    `, params);
+
+    // 6. Timeline (Survey Count per Day)
+    const timelineRes = await db.query(`
+      SELECT DATE(created_at) as date, COUNT(*) as count 
+      FROM visit_surveys 
+      WHERE created_at >= $1::timestamp AND created_at < $2::timestamp
+        ${salesmanFilter}
+      GROUP BY DATE(created_at)
+      ORDER BY DATE(created_at) ASC
+    `, params);
+
+    // 7. Raw Surveys for Export
+    const rawSurveysRes = await db.query(`
+      SELECT visit_id, member_code, advisor_name, berhasil_order, 
+             promo_menarik, kendala_belanja, produk_mahal, 
+             produk_belum_ada, saran_kritik, created_at
+      FROM visit_surveys
+      WHERE created_at >= $1::timestamp AND created_at < $2::timestamp
+        ${salesmanFilter}
+      ORDER BY created_at DESC
+    `, params);
+
+    res.json({
+      availableSalesmen: salesmenRes.rows.map(s => s.id),
+      timeline: timelineRes.rows,
+      rawSurveys: rawSurveysRes.rows,
+      hitRate: hitRateRes.rows,
+      promo: promoRes.rows,
+      kendala: kendalaRes.rows,
+      produkMahal: produkMahalRes.rows,
+      feedback: feedbackRes.rows
+    });
+
+  } catch (err) {
+    console.error('Survey analytics error:', err.message);
+    res.status(500).json({ error: 'Gagal memuat analitik survei: ' + err.message });
+  }
+};
+
 module.exports = {
-  getMonthlyEvaluation
+  getMonthlyEvaluation,
+  getSurveyAnalytics
 };

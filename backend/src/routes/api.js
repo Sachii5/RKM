@@ -7,7 +7,7 @@ const { getZoneByRadius, getZoneByKelurahan, createZoneTransaction, softDeleteZo
 const { getTodayRoute } = require('../services/route.service');
 const { performResetAndBackup } = require('../services/backup.service');
 const { isValidSalesman, getTodayDateString } = require('../utils/helpers');
-const { getMonthlyEvaluation } = require('../controllers/analytics.controller');
+const { getMonthlyEvaluation, getSurveyAnalytics } = require('../controllers/analytics.controller');
 
 const authenticate = require('../middleware/auth.middleware');
 const { requireSupervisorOrAbove, requireSalesman, requireAdmin } = require('../middleware/role.middleware');
@@ -524,5 +524,8 @@ router.post('/reset', authenticate, requireSupervisorOrAbove, async (req, res) =
 
 // GET /api/analytics/monthly (Manager/Supervisor)
 router.get('/analytics/monthly', authenticate, requireSupervisorOrAbove, getMonthlyEvaluation);
+
+// GET /api/analytics/surveys (Manager/Supervisor)
+router.get('/analytics/surveys', authenticate, requireSupervisorOrAbove, getSurveyAnalytics);
 
 module.exports = router;

@@ -6,6 +6,7 @@ import ResetPage from '../pages/Reset.vue'
 import ChangePassword from '../pages/ChangePassword.vue'
 import ZoneList from '../pages/ZoneList.vue'
 import ManagerDashboard from '../pages/ManagerDashboard.vue'
+import SurveyAnalytics from '../pages/SurveyAnalytics.vue'
 import { useAuthStore } from '../stores/auth'
 
 const routes = [
@@ -38,6 +39,11 @@ const routes = [
   { 
     path: '/evaluation', 
     component: ManagerDashboard,
+    meta: { requiresAuth: true, allowedRoles: ['ADMIN', 'SUPERVISOR'] } 
+  },
+  { 
+    path: '/survey-analytics', 
+    component: SurveyAnalytics,
     meta: { requiresAuth: true, allowedRoles: ['ADMIN', 'SUPERVISOR'] } 
   },
 ]
