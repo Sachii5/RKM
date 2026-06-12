@@ -239,6 +239,32 @@ const compileArrays = () => {
 }
 
 const submitSurvey = async () => {
+  // Validasi Input Wajib
+  if (!form.perluKunjunganRutin) {
+    alert("Mohon isi pertanyaan: Apakah perlu dikunjungi oleh sales seminggu satu kali?")
+    return
+  }
+  if (form.perluKunjunganRutin === 'Lainnya' && !form.perluKunjunganOtherText.trim()) {
+    alert("Mohon isi deskripsi untuk pilihan 'Lainnya' pada pertanyaan kunjungan rutin.")
+    return
+  }
+  if (!form.saranKritik.trim()) {
+    alert("Mohon isi Saran / Kritik dari Member.")
+    return
+  }
+  if (!form.berhasilOrder) {
+    alert("Mohon isi pertanyaan: Apakah MM berhasil Order?")
+    return
+  }
+  if (form.berhasilOrder === 'Lainnya' && !form.berhasilOrderOtherText.trim()) {
+    alert("Mohon isi deskripsi untuk pilihan 'Lainnya' pada pertanyaan MM berhasil Order.")
+    return
+  }
+  if (!photoFile.value) {
+    alert("Mohon Upload Foto Kunjungan terlebih dahulu.")
+    return
+  }
+
   loading.value = true
 
   try {

@@ -23,7 +23,8 @@ const PORT = process.env.PORT || 3000;
 const allowedOrigins = [
   'http://localhost:5173',
   'http://172.26.11.12:5173',
-  'https://server-spi-2k.tailcd68fc.ts.net'
+  'https://server-spi-2k.tailcd68fc.ts.net',
+  'https://desktop-ohe860l.tailcd68fc.ts.net'
 ];
 app.use(cors({
   origin: function (origin, callback) {
