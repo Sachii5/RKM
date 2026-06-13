@@ -374,9 +374,10 @@ router.get('/zone/:id/visits', authenticate, requireSupervisorOrAbove, async (re
     const zone = resZone.rows[0];
 
     const resVisits = await db.query(`
-      SELECT zm.member_code, zm.member_name, v.visited, v.is_closed, v.visited_at, v.is_approved, v.approved_at
+      SELECT zm.member_code, zm.member_name, v.id as visit_log_id, v.visited, v.is_closed, v.visited_at, v.is_approved, v.approved_at, vs.foto_kunjungan_url
       FROM zone_members zm
       JOIN visit_logs v ON zm.zone_id = v.zone_id AND zm.member_code = v.member_code
+      LEFT JOIN visit_surveys vs ON v.id = vs.visit_id
       WHERE zm.zone_id = $1
         AND v.visited_at >= DATE_TRUNC('month', $2::timestamp)
         AND v.visited_at < DATE_TRUNC('month', $2::timestamp) + INTERVAL '1 month'
@@ -430,6 +431,34 @@ router.post('/visit/approve', authenticate, requireSupervisorOrAbove, async (req
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Gagal menyetujui kunjungan' });
+  }
+});
+
+// POST /api/visit/reject
+router.post('/visit/reject', authenticate, requireSupervisorOrAbove, async (req, res) => {
+  const { zone_id, member_code, reason } = req.body;
+  if (!member_code || !zone_id) return res.status(400).json({ error: 'Member code dan zone_id harus diisi' });
+
+  try {
+    const resUpdate = await db.query(`
+      UPDATE visit_logs vl
+      SET visited = false, is_closed = false, visited_at = z.scheduled_date::timestamp, reject_reason = $1
+      FROM zones z
+      WHERE vl.zone_id = z.id
+        AND vl.zone_id = $2 
+        AND vl.member_code = $3 
+        AND vl.visited = true 
+        AND vl.is_approved = false
+        AND vl.visited_at >= DATE_TRUNC('month', z.scheduled_date::timestamp)
+        AND vl.visited_at < DATE_TRUNC('month', z.scheduled_date::timestamp) + INTERVAL '1 month'
+    `, [reason || null, Number(zone_id), sanitizeString(member_code, 20)]);
+    
+    if (resUpdate.rowCount === 0) {
+      return res.status(404).json({ error: 'Kunjungan tidak ditemukan atau sudah disetujui' });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Gagal menolak kunjungan' });
   }
 });
 

@@ -110,7 +110,7 @@
                       <span class="detail-value text-green-600 font-bold">{{ zone.visited_count ?? 0 }}</span>
                     </div>
                     <div class="detail-row">
-                      <span class="detail-label"><i class="fa-solid fa-hourglass-half fa-fw" style="color:#3b82f6;"></i> Menunggu Konfirmasi:</span>
+                      <span class="detail-label"><i class="fa-solid fa-hourglass-hal fa-fw" style="color:#3b82f6;"></i> Menunggu Konfirmasi:</span>
                       <span class="detail-value text-blue-500 font-bold">{{ zone.pending_approval_count ?? 0 }}</span>
                     </div>
                     <div class="detail-row">
@@ -208,14 +208,24 @@
                   <div v-if="v.is_approved === true" class="text-[10px] text-emerald-600 mt-1 font-medium bg-emerald-50 px-2 py-0.5 rounded-md inline-block">Approve: {{ formatDateTime(v.approved_at) }}</div>
                 </td>
                 <td class="px-5 py-3 text-center">
-                  <button 
-                    v-if="v.visited === true && v.is_closed === false && v.is_approved === false" 
-                    @click="approveVisit(v.member_code)"
-                    class="bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm transition-colors text-xs font-medium py-1.5 px-4 rounded-lg"
-                    :disabled="approving[v.member_code]"
-                  >
-                    <i class="fa-solid fa-check mr-1"></i>{{ approving[v.member_code] ? '...' : 'Terima' }}
-                  </button>
+                  <div class="flex items-center justify-center gap-2">
+                    <button 
+                      v-if="v.visited === true && v.is_closed === false && v.is_approved === false" 
+                      @click="promptApprove(v)"
+                      class="bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm transition-colors text-xs font-medium py-1.5 px-3 rounded-lg flex items-center justify-center gap-1"
+                      :disabled="approving[v.member_code]"
+                    >
+                      <i class="fa-solid fa-check"></i> Terima
+                    </button>
+                    <button 
+                      v-if="v.visited === true && v.is_closed === false && v.is_approved === false" 
+                      @click="rejectVisit(v)"
+                      class="bg-rose-500 hover:bg-rose-600 text-white shadow-sm transition-colors text-xs font-medium py-1.5 px-3 rounded-lg flex items-center justify-center gap-1"
+                      :disabled="approving[v.member_code]"
+                    >
+                      <i class="fa-solid fa-xmark"></i> Tolak
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -224,6 +234,47 @@
         
         <div class="mt-6 flex justify-end">
           <button @click="showingVisitsModal = false" class="btn btn-secondary">Tutup</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Photo Verification Modal -->
+    <div v-if="showingPhotoModal" class="modal-overlay" @click.self="showingPhotoModal = false" style="z-index: 1050;">
+      <div class="modal-content animate-fade-in text-center" style="max-width: 500px;">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-lg font-bold">Verifikasi Foto Kunjungan</h2>
+          <button @click="showingPhotoModal = false" class="text-gray-500 hover:text-gray-800 text-xl"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        
+        <div class="mb-6 bg-gray-100 rounded-lg overflow-hidden min-h-[300px] flex items-center justify-center border border-gray-200">
+          <img v-if="selectedVisitForApproval?.foto_kunjungan_url" :src="selectedVisitForApproval.foto_kunjungan_url" class="max-h-[60vh] object-contain w-full" alt="Foto Kunjungan" />
+          <div v-else class="text-gray-400 flex flex-col items-center">
+            <i class="fa-regular fa-image text-4xl mb-2"></i>
+            <p>Tidak ada foto terlampir</p>
+          </div>
+        </div>
+
+        <p class="text-sm text-gray-600 mb-6">Apakah Anda yakin ingin menyetujui kunjungan ke toko <strong>{{ selectedVisitForApproval?.member_name }}</strong>?</p>
+
+        <div class="flex justify-between items-center mt-6">
+          <button 
+            @click="rejectVisit(selectedVisitForApproval)" 
+            class="btn bg-rose-100 hover:bg-rose-200 text-rose-700 text-sm flex items-center gap-2"
+            :disabled="approving[selectedVisitForApproval?.member_code]"
+          >
+            <i class="fa-solid fa-xmark"></i> Tolak Kunjungan
+          </button>
+          
+          <div class="flex gap-3">
+            <button @click="showingPhotoModal = false" class="btn btn-secondary text-sm">Batal</button>
+            <button 
+              @click="confirmApprove" 
+              class="btn btn-primary text-sm flex items-center gap-2"
+              :disabled="approving[selectedVisitForApproval?.member_code]"
+            >
+              <i class="fa-solid fa-check"></i> {{ approving[selectedVisitForApproval?.member_code] ? 'Memproses...' : 'Konfirmasi Terima' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -254,6 +305,9 @@ const selectedZone = ref(null)
 const zoneVisits = ref([])
 const loadingVisits = ref(false)
 const approving = ref({})
+
+const showingPhotoModal = ref(false)
+const selectedVisitForApproval = ref(null)
 
 const isManagement = computed(() => ['ADMIN', 'SUPERVISOR'].includes(auth.role))
 
@@ -391,8 +445,15 @@ const openVisitsModal = async (zone) => {
   }
 }
 
-const approveVisit = async (memberCode) => {
-  if (!selectedZone.value) return
+const promptApprove = (visit) => {
+  selectedVisitForApproval.value = visit
+  showingPhotoModal.value = true
+}
+
+const confirmApprove = async () => {
+  if (!selectedZone.value || !selectedVisitForApproval.value) return
+  const memberCode = selectedVisitForApproval.value.member_code
+  
   approving.value[memberCode] = true
   try {
     await axios.post('/api/visit/approve', {
@@ -402,18 +463,56 @@ const approveVisit = async (memberCode) => {
       headers: { Authorization: `Bearer ${auth.token}` }
     })
     
-    // Update local visit list array
+    // Update local state
     const vIndex = zoneVisits.value.findIndex(v => v.member_code === memberCode)
     if (vIndex !== -1) {
       zoneVisits.value[vIndex].is_approved = true
       zoneVisits.value[vIndex].approved_at = new Date().toISOString()
     }
 
-    // Refresh overall stats without full page reload if possible, or just call fetchZones
-    fetchZones()
+    // Also update zone aggregate counters
+    selectedZone.value.pending_approval_count = Math.max(0, (selectedZone.value.pending_approval_count || 1) - 1)
+    selectedZone.value.visited_count = (selectedZone.value.visited_count || 0) + 1
 
+    showingPhotoModal.value = false
   } catch (err) {
     alert(err.response?.data?.error || 'Gagal menyetujui kunjungan')
+  } finally {
+    approving.value[memberCode] = false
+  }
+}
+
+const rejectVisit = async (visit) => {
+  if (!selectedZone.value || !visit) return
+  
+  const reason = window.prompt(`Masukkan alasan penolakan kunjungan untuk toko ${visit.member_name}:`)
+  if (reason === null) return // User cancelled
+  
+  const memberCode = visit.member_code
+  approving.value[memberCode] = true
+  try {
+    await axios.post('/api/visit/reject', {
+      zone_id: selectedZone.value.id,
+      member_code: memberCode,
+      reason: reason || ''
+    }, {
+      headers: { Authorization: `Bearer ${auth.token}` }
+    })
+    
+    // Update local state: reset to unvisited
+    const vIndex = zoneVisits.value.findIndex(v => v.member_code === memberCode)
+    if (vIndex !== -1) {
+      zoneVisits.value[vIndex].visited = false
+      zoneVisits.value[vIndex].is_approved = false
+    }
+
+    // Update aggregate counters
+    selectedZone.value.pending_approval_count = Math.max(0, (selectedZone.value.pending_approval_count || 1) - 1)
+    selectedZone.value.pending_count = (selectedZone.value.pending_count || 0) + 1
+
+    if (showingPhotoModal.value) showingPhotoModal.value = false
+  } catch (err) {
+    alert(err.response?.data?.error || 'Gagal menolak kunjungan')
   } finally {
     approving.value[memberCode] = false
   }
