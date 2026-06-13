@@ -1,4 +1,4 @@
-CREATE TABLE users_local (
+CREATE TABLE IF NOT EXISTS users_local (
     id SERIAL PRIMARY KEY,
     userid VARCHAR(50) UNIQUE NOT NULL,
     role VARCHAR(20) NOT NULL,
@@ -6,7 +6,7 @@ CREATE TABLE users_local (
     first_login BOOLEAN DEFAULT TRUE
 );
 
-CREATE TABLE zones (
+CREATE TABLE IF NOT EXISTS zones (
     id SERIAL PRIMARY KEY,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(50) NOT NULL,
@@ -21,7 +21,7 @@ CREATE TABLE zones (
     status VARCHAR(20) DEFAULT 'active'
 );
 
-CREATE TABLE zone_members (
+CREATE TABLE IF NOT EXISTS zone_members (
     id SERIAL PRIMARY KEY,
     zone_id INTEGER NOT NULL REFERENCES zones(id) ON DELETE CASCADE,
     member_code VARCHAR(50) NOT NULL,
@@ -33,7 +33,7 @@ CREATE TABLE zone_members (
     email_snapshot VARCHAR(100)
 );
 
-CREATE TABLE visit_logs (
+CREATE TABLE IF NOT EXISTS visit_logs (
     id SERIAL,
     zone_id INTEGER NOT NULL REFERENCES zones(id) ON DELETE CASCADE,
     member_code VARCHAR(50) NOT NULL,
@@ -42,13 +42,17 @@ CREATE TABLE visit_logs (
     visited_at TIMESTAMP,
     is_approved BOOLEAN DEFAULT FALSE,
     approved_at TIMESTAMP,
+    reject_reason TEXT,
     PRIMARY KEY (id, visited_at)
 ) PARTITION BY RANGE (visited_at);
 
-CREATE TABLE visit_logs_2026_05 PARTITION OF visit_logs FOR VALUES FROM ('2026-05-01') TO ('2026-06-01');
-CREATE TABLE visit_logs_2026_06 PARTITION OF visit_logs FOR VALUES FROM ('2026-06-01') TO ('2026-07-01');
+-- Pastikan kolom reject_reason ditambahkan jika tabel visit_logs sudah dibuat pada versi sebelumnya
+ALTER TABLE visit_logs ADD COLUMN IF NOT EXISTS reject_reason TEXT;
 
-CREATE TABLE audit_logs (
+CREATE TABLE IF NOT EXISTS visit_logs_2026_05 PARTITION OF visit_logs FOR VALUES FROM ('2026-05-01') TO ('2026-06-01');
+CREATE TABLE IF NOT EXISTS visit_logs_2026_06 PARTITION OF visit_logs FOR VALUES FROM ('2026-06-01') TO ('2026-07-01');
+
+CREATE TABLE IF NOT EXISTS audit_logs (
     id SERIAL PRIMARY KEY,
     user_id VARCHAR(50) NOT NULL,
     role VARCHAR(20) NOT NULL,
@@ -57,7 +61,7 @@ CREATE TABLE audit_logs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE visit_surveys (
+CREATE TABLE IF NOT EXISTS visit_surveys (
     id SERIAL PRIMARY KEY,
     visit_id INTEGER NOT NULL,
     member_code VARCHAR(50) NOT NULL,
@@ -73,3 +77,18 @@ CREATE TABLE visit_surveys (
     foto_kunjungan_url VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Indexes for performance optimization (Safe & Zero Downtime for existing data)
+CREATE INDEX IF NOT EXISTS idx_visit_surveys_created_at ON visit_surveys(created_at);
+CREATE INDEX IF NOT EXISTS idx_visit_surveys_visit_id ON visit_surveys(visit_id);
+
+CREATE INDEX IF NOT EXISTS idx_zones_salesman ON zones(salesman_code);
+CREATE INDEX IF NOT EXISTS idx_zones_status ON zones(status);
+CREATE INDEX IF NOT EXISTS idx_zones_date ON zones(scheduled_date);
+
+CREATE INDEX IF NOT EXISTS idx_zone_members_zone_id ON zone_members(zone_id);
+CREATE INDEX IF NOT EXISTS idx_zone_members_code ON zone_members(member_code);
+
+CREATE INDEX IF NOT EXISTS idx_visit_logs_zone_member ON visit_logs(zone_id, member_code);
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
