@@ -10,54 +10,34 @@ const determineRole = (email, salesmanCode) => {
     if (e.startsWith('edp') || e.startsWith('mgr')) return 'ADMIN';
     if (e.startsWith('spv')) return 'SUPERVISOR';
   }
-  if (salesmanCode) {
-    const s = salesmanCode.toUpperCase();
-    if (['DND', 'DPT', 'FRL', 'LID'].includes(s)) return 'SALESMAN';
-  }
   return 'UNKNOWN';
 };
 
 const loginUser = async (userid, password) => {
-  // 1. Check if user is Salesman (SQLite `users_local` table)
-  // We assume userid for salesman is their 3-letter code like 'DND'
-  const isSalesmanFormat = /^[A-Z]{3}$/i.test(userid);
+  // 1. Check users_local table first (for Salesman or any manually created users)
+  const upperUserId = userid.toUpperCase();
+  const resUser = await db.query('SELECT * FROM users_local WHERE userid = $1', [upperUserId]);
   
-  if (isSalesmanFormat) {
-    const sCode = userid.toUpperCase();
-    if (['DND', 'DPT', 'FRL', 'LID'].includes(sCode)) {
-      // Check Postgres users_local
-      let resUser = await db.query('SELECT * FROM users_local WHERE userid = $1', [sCode]);
-      let user = resUser.rows[0];
-      
-      if (!user) {
-        // First time salesman login -> Seed default password '123456'
-        const defaultHash = await hashPassword('123456');
-        await db.query(`
-          INSERT INTO users_local (userid, role, password_hash, first_login)
-          VALUES ($1, $2, $3, true)
-        `, [sCode, 'SALESMAN', defaultHash]);
-        
-        resUser = await db.query('SELECT * FROM users_local WHERE userid = $1', [sCode]);
-        user = resUser.rows[0];
-      }
-      
-      const pwdMatch = await comparePassword(password, user.password_hash);
-      if (!pwdMatch) {
-        throw new Error('Invalid credentials');
-      }
-      
-      const token = generateToken({
-        userid: user.userid,
-        role: user.role,
-        first_login: user.first_login
-      });
-      
-      return {
-        token,
-        role: user.role,
-        first_login: user.first_login === true
-      };
+  if (resUser.rows.length > 0) {
+    const user = resUser.rows[0];
+    const pwdMatch = await comparePassword(password, user.password_hash);
+    
+    if (!pwdMatch) {
+      throw new Error('Invalid credentials');
     }
+    
+    const token = generateToken({
+      userid: user.userid,
+      role: user.role,
+      first_login: user.first_login
+    });
+    
+    return {
+      token,
+      role: user.role,
+      first_login: user.first_login === true,
+      fullname: user.fullname
+    };
   }
 
   // --- HARDOCODED TEST ACCOUNTS OVERRIDE AS REQUESTED ---

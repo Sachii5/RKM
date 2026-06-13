@@ -6,6 +6,9 @@ CREATE TABLE IF NOT EXISTS users_local (
     first_login BOOLEAN DEFAULT TRUE
 );
 
+-- Pastikan kolom fullname ditambahkan jika tabel users_local sudah dibuat pada versi sebelumnya
+ALTER TABLE users_local ADD COLUMN IF NOT EXISTS fullname VARCHAR(150);
+
 CREATE TABLE IF NOT EXISTS zones (
     id SERIAL PRIMARY KEY,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

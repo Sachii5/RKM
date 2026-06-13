@@ -44,6 +44,9 @@
         <!-- Tautan Admin / Supervisor -->
         <template v-if="auth.role === 'ADMIN' || auth.role === 'SUPERVISOR'">
           <div class="nav-item">
+            <router-link to="/users" class="nav-link"><i class="fa-solid fa-users fa-fw"></i> Manajemen Pengguna</router-link>
+          </div>
+          <div class="nav-item">
             <router-link to="/reset" class="nav-link text-red-500 hover:text-red-700 font-bold"><i class="fa-solid fa-triangle-exclamation fa-fw"></i> Reset Sistem</router-link>
           </div>
         </template>

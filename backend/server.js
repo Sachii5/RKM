@@ -4,6 +4,7 @@ require('dotenv').config();
 
 const apiRoutes = require('./src/routes/api');
 const authRoutes = require('./src/routes/auth');
+const usersRoutes = require('./src/routes/users');
 const cron = require('node-cron');
 const { createNextPartitions } = require('./src/utils/partitionManager');
 
@@ -96,6 +97,7 @@ app.disable('x-powered-by');
 // Main API routes
 app.use('/api', apiRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/users', usersRoutes);
 
 // Error handling middleware — never leak stack traces to client
 app.use((err, req, res, next) => {

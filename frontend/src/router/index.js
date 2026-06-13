@@ -7,6 +7,7 @@ import ChangePassword from '../pages/ChangePassword.vue'
 import ZoneList from '../pages/ZoneList.vue'
 import ManagerDashboard from '../pages/ManagerDashboard.vue'
 import SurveyAnalytics from '../pages/SurveyAnalytics.vue'
+import UserManagement from '../pages/UserManagement.vue'
 import { useAuthStore } from '../stores/auth'
 
 const routes = [
@@ -44,6 +45,11 @@ const routes = [
   { 
     path: '/survey-analytics', 
     component: SurveyAnalytics,
+    meta: { requiresAuth: true, allowedRoles: ['ADMIN', 'SUPERVISOR'] } 
+  },
+  { 
+    path: '/users', 
+    component: UserManagement,
     meta: { requiresAuth: true, allowedRoles: ['ADMIN', 'SUPERVISOR'] } 
   },
 ]
