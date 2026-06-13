@@ -11,6 +11,10 @@ dist/
 dist-ssr/
 build/
 
+# User Uploads
+uploads/
+backend/uploads/
+
 # SQLite databases
 *.db
 *.sqlite
