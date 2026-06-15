@@ -1,93 +1,154 @@
-# RKM: Route Tracking & Order Evaluation System
+# RKM (Rute Kunjungan Mingguan) System
 
-<<<<<<< HEAD
-isreport-v2 adalah sistem *Single Page Application* (SPA) yang dirancang untuk pelacakan rute kunjungan *salesman* (RKM) dan pemantauan evaluasi order di Stock Point Indogrosir. Aplikasi ini dibangun dengan pendekatan UI/UX *Mobile-First*, memastikan antarmuka yang responsif, ringan, dan sangat efisien saat digunakan oleh *salesman* langsung di lapangan.
-=======
-RKM adalah sistem *Single Page Application* (SPA) yang dirancang untuk pelacakan rute kunjungan *salesman* (RKM) dan pemantauan evaluasi order di Stock Point Indogrosir. Aplikasi ini dibangun dengan pendekatan UI/UX *Mobile-First*, memastikan antarmuka yang responsif, ringan, dan sangat efisien saat digunakan oleh *salesman* langsung di lapangan.
->>>>>>> 9354464e001ae6b3d4892caaf90c1aaaf34889d9
+![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Build](https://img.shields.io/badge/build-passing-success.svg)
+![Vue](https://img.shields.io/badge/Vue.js-3.0-4FC08D.svg?logo=vue.js)
+![Node](https://img.shields.io/badge/Node.js-18+-339933.svg?logo=node.js)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-336791.svg?logo=postgresql)
 
-## Arsitektur Database
+## Description
 
-Sistem ini digerakkan oleh arsitektur **Dual-Database** untuk memisahkan lalu lintas operasional dengan data inti perusahaan:
+The RKM (Rute Kunjungan Mingguan) System is an interactive, map-based tracking and zoning application designed to digitize and enforce salesman field visits. It features geospatial route planning, real-time survey data collection, strict photo-evidence validation, and comprehensive analytic dashboards for supervisors and administrators to enforce operational compliance.
 
-- **Master Database (PostgreSQL - Jaringan Internal)**
-  Bersifat *Read-Only*. Basis data ini digunakan sebagai *source of truth* untuk validasi data pelanggan dan riwayat transaksi (Order Closing).
-- **Operational Database (PostgreSQL - Lokal)**
-  Bersifat *Read-Write*. Basis data ini dikhususkan untuk menampung seluruh data operasional harian (Zoning, Visit Logs). Tabel log kunjungan (*visit_logs*) dirancang menggunakan mekanisme **Table Partitioning per bulan** guna mempertahankan performa operasi baca dan tulis yang optimal pada volume data besar.
+## Table of Contents
 
-## Tech Stack
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Environment Variables](#environment-variables)
+- [Usage/Running the App](#usagerunning-the-app)
+- [Architecture/Folder Structure](#architecturefolder-structure)
+- [Contributing](#contributing)
+- [License](#license)
 
-Sistem dikembangkan di atas tumpukan teknologi berikut:
+## Features
 
-**Frontend:**
-- Vue 3 (Composition API)
-- Vite
-- Pinia
-- TailwindCSS
-- Chart.js
-- Leaflet
+- **Geospatial Route Planning (Zoning):** Interactive leaflet-based maps allowing supervisors to define radius-based visit zones and assign members to salesmen.
+- **Strict Compliance & Photo Validation:** Visit workflows that require live photo evidence. Supervisors must manually approve or reject flagged visits based on photo integrity.
+- **Dynamic Field Surveys:** Built-in survey modules capturing competitor analysis, inventory checks, and customer feedback.
+- **Real-time Analytics Dashboard:** Comprehensive tracking of visit completion rates (SLA), pending approvals, and salesman performance metrics.
+- **Hierarchical Role Management:** Granular access controls ensuring strict boundaries between Salesmen, Supervisors, Managers, and System Admins.
+- **Automated Data Export:** Instant generation of clean CSV and Excel data extracts for business intelligence integration.
+- **Partitioned Database Architecture:** High-performance PostgreSQL setup utilizing monthly table partitions for millions of visit logs.
 
-**Backend:**
-- Node.js
-- Express
-- pg (PostgreSQL Client)
-- JWT (JSON Web Tokens)
+## Prerequisites
 
-## Prasyarat (Prerequisites)
+Ensure you have the following installed on your local development machine:
 
-Pastikan lingkungan (*environment*) pengembangan berikut telah terpasang di sistem Anda:
-- Node.js
+- Node.js (v18.0.0 or higher)
+- npm (v9.0.0 or higher)
+- PostgreSQL (v15.0 or higher)
 - Git
-- PostgreSQL Server aktif
 
-## Panduan Instalasi & Setup Environment
+## Installation
 
-Ikuti langkah-langkah bernomor berikut untuk menginisialisasi aplikasi dari nol:
-
-1. **Clone Repository & Instalasi Dependensi**
-   Kloning *repository* ke direktori lokal Anda, lalu jalankan `npm install` pada folder `frontend` dan `backend`.
-   ```bash
-<<<<<<< HEAD
-   git clone <repository_url> isreport-v2
-   cd isreport-v2/frontend
-=======
-   git clone <repository_url> RKM
-   cd RKM/frontend
->>>>>>> 9354464e001ae6b3d4892caaf90c1aaaf34889d9
-   npm install
-   cd ../backend
-   npm install
-   ```
-
-2. **Konfigurasi Environment**
-   Buka folder `backend`, duplikasi file `.env.example` menjadi `.env`, lalu isi seluruh kredensial koneksi database untuk PostgreSQL operasional lokal dan PostgreSQL master (Internal).
-
-3. **Pembuatan Database**
-<<<<<<< HEAD
-   Buat sebuah basis data (*database*) kosong bernama `isreport_ops` secara manual menggunakan *pgAdmin* atau CLI `psql`.
-=======
-   Buat sebuah basis data (*database*) kosong bernama `rkmspi` secara manual menggunakan *pgAdmin* atau CLI `psql`.
->>>>>>> 9354464e001ae6b3d4892caaf90c1aaaf34889d9
-
-4. **Inisialisasi Tabel Operasional**
-   Masih di dalam folder `backend`, jalankan perintah berikut untuk mengeksekusi migrasi skema tabel operasional dan pembuat partisi bulanannya:
-   ```bash
-   npm run db:init
-   ```
-
-## Injeksi Data Historis
-
-Untuk memasukkan data log kunjungan lama ke dalam PostgreSQL lokal, jalankan perintah berikut di dalam folder `backend`:
+Follow these steps to clone the repository and set up the development environment:
 
 ```bash
-npm run db:migrate-legacy <path_ke_file_historis>
+# 1. Clone the repository
+git clone https://github.com/[INSERT_ORG_NAME]/RKM.git
+
+# 2. Navigate into the project directory
+cd RKM
+
+# 3. Install Backend Dependencies
+cd backend
+npm install
+
+# 4. Install Frontend Dependencies
+cd ../frontend
+npm install
 ```
-*Catatan:* Proses ini beroperasi dengan mekanisme Anti-Duplikasi (`ON CONFLICT`). Oleh karena itu, perintah ini sangat aman untuk dijalankan berulang kali untuk melakukan sinkronisasi dengan *file* yang berbeda tanpa risiko adanya *row* atau entri ganda.
 
-## Menjalankan Aplikasi
+### Database Setup
 
-Untuk menjalankan *server backend* dan *frontend* secara bersamaan (mode *development*), eksekusi perintah berikut:
+1. Log into your PostgreSQL instance.
+2. Create a new database named `rkmspi`:
+   ```sql
+   CREATE DATABASE rkmspi;
+   ```
+3. Run the schema migration script:
+   ```bash
+   cd backend/database
+   psql -U postgres -d rkmspi -f schema.sql
+   ```
 
+## Environment Variables
+
+Create a `.env` file in the `backend/` directory based on the following template. Do not expose real credentials in your version control system.
+
+```env
+# Server Configuration
+PORT=3000
+NODE_ENV=development
+
+# PostgreSQL Database Configuration
+DB_USER=postgres
+DB_PASSWORD=[INSERT_DB_PASSWORD_HERE]
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=rkmspi
+
+# Authentication Security
+JWT_SECRET=[INSERT_STRONG_SECRET_KEY_HERE]
+```
+
+## Usage/Running the App
+
+### Start the Backend Server (Development Mode)
 ```bash
+cd backend
 npm run dev
 ```
+*The backend server will start on `http://localhost:3000`.*
+
+### Start the Frontend Server (Development Mode)
+```bash
+cd frontend
+npm run dev
+```
+*The frontend application will start on `http://localhost:5173`.*
+
+## Architecture/Folder Structure
+
+```text
+RKM/
+├── backend/                  # Express.js REST API
+│   ├── database/             # SQL schemas and migration scripts
+│   ├── src/                  
+│   │   ├── controllers/      # Request handlers and business logic
+│   │   ├── middleware/       # JWT auth and RBAC validation
+│   │   ├── routes/           # API endpoint definitions
+│   │   ├── services/         # Core logic and integrations
+│   │   └── utils/            # Cryptography, partitioning, and helpers
+│   ├── uploads/              # Ignored directory for user-uploaded survey photos
+│   ├── .env                  # Environment variables (ignored)
+│   └── server.js             # Application entry point
+├── frontend/                 # Vue.js 3 SPA Application
+│   ├── public/               # Static assets
+│   ├── src/
+│   │   ├── assets/           # CSS and styling files
+│   │   ├── components/       # Reusable Vue components
+│   │   ├── composables/      # Shared Vue composition logic
+│   │   ├── pages/            # View/Route components
+│   │   ├── router/           # Vue-Router configuration
+│   │   └── stores/           # Pinia state management
+│   ├── index.html            # Main HTML template
+│   ├── tailwind.config.js    # Tailwind CSS configuration
+│   └── vite.config.js        # Vite bundler configuration
+├── .gitignore                # Git ignore rules
+└── README.md                 # Project documentation
+```
+
+## Contributing
+
+1. Fork the repository.
+2. Create a feature branch: `git checkout -b feature/your-feature-name`.
+3. Commit your changes. Use Conventional Commits (e.g., `feat: add user management`, `fix: resolve auth token issue`).
+4. Push to the branch: `git push origin feature/your-feature-name`.
+5. Open a Pull Request for review.
+
+## License
+
+This project is licensed under the [MIT License](https://opensource.org/licenses/MIT).
