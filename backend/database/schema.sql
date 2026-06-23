@@ -74,12 +74,16 @@ CREATE TABLE IF NOT EXISTS visit_surveys (
     produk_belum_ada TEXT,
     sumber_info_promo JSONB,
     promo_menarik VARCHAR(150),
-    perlu_kunjungan_rutin VARCHAR(50),
+    perlu_kunjungan_rutin TEXT,
     saran_kritik TEXT,
-    berhasil_order VARCHAR(50),
+    berhasil_order TEXT,
     foto_kunjungan_url VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Perlu longgar karena pilihan "Lainnya" bisa berisi alasan bebas dari user lapangan
+ALTER TABLE visit_surveys ALTER COLUMN perlu_kunjungan_rutin TYPE TEXT;
+ALTER TABLE visit_surveys ALTER COLUMN berhasil_order TYPE TEXT;
 
 -- Indexes for performance optimization (Safe & Zero Downtime for existing data)
 CREATE INDEX IF NOT EXISTS idx_visit_surveys_created_at ON visit_surveys(created_at);

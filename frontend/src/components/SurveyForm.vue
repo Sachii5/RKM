@@ -102,7 +102,7 @@
               <div class="flex items-center gap-2 p-2 w-full sm:w-auto flex-1 hover:bg-blue-50/50 rounded-lg">
                 <input type="radio" v-model="form.perluKunjunganRutin" value="Lainnya" class="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500">
                 <span class="text-gray-700 text-sm whitespace-nowrap">Lainnya:</span>
-                <input type="text" v-model="form.perluKunjunganOtherText" @focus="form.perluKunjunganRutin = 'Lainnya'" class="form-control py-1.5 px-3 text-sm flex-1 min-w-[100px] bg-white border-gray-300">
+                <input type="text" v-model="form.perluKunjunganOtherText" maxlength="255" @focus="form.perluKunjunganRutin = 'Lainnya'" class="form-control py-1.5 px-3 text-sm flex-1 min-w-[100px] bg-white border-gray-300">
               </div>
             </div>
           </div>
@@ -124,7 +124,7 @@
               <div class="flex items-center gap-2 p-2 w-full sm:w-auto flex-1 hover:bg-blue-50/50 rounded-lg">
                 <input type="radio" v-model="form.berhasilOrder" value="Lainnya" class="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500">
                 <span class="text-gray-700 text-sm whitespace-nowrap">Lainnya:</span>
-                <input type="text" v-model="form.berhasilOrderOtherText" @focus="form.berhasilOrder = 'Lainnya'" class="form-control py-1.5 px-3 text-sm flex-1 min-w-[100px] bg-white border-gray-300">
+                <input type="text" v-model="form.berhasilOrderOtherText" maxlength="255" @focus="form.berhasilOrder = 'Lainnya'" class="form-control py-1.5 px-3 text-sm flex-1 min-w-[100px] bg-white border-gray-300">
               </div>
             </div>
           </div>

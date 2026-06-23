@@ -57,13 +57,13 @@
               </td>
               <td class="px-6 py-4 text-right">
                 <div class="flex items-center justify-end gap-2">
-                  <button @click="promptResetPassword(user)" class="w-8 h-8 rounded-lg bg-gray-50 text-gray-500 hover:text-orange-600 hover:bg-orange-50 transition-colors flex items-center justify-center" title="Reset Password">
+                  <button v-if="canManageUser(user)" @click="promptResetPassword(user)" class="w-8 h-8 rounded-lg bg-gray-50 text-gray-500 hover:text-orange-600 hover:bg-orange-50 transition-colors flex items-center justify-center" title="Reset Password">
                     <i class="fa-solid fa-key"></i>
                   </button>
-                  <button @click="openEditModal(user)" class="w-8 h-8 rounded-lg bg-gray-50 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors flex items-center justify-center" title="Edit Pengguna">
+                  <button v-if="canManageUser(user)" @click="openEditModal(user)" class="w-8 h-8 rounded-lg bg-gray-50 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors flex items-center justify-center" title="Edit Pengguna">
                     <i class="fa-solid fa-pen"></i>
                   </button>
-                  <button @click="promptDelete(user)" class="w-8 h-8 rounded-lg bg-gray-50 text-gray-500 hover:text-rose-600 hover:bg-rose-50 transition-colors flex items-center justify-center" title="Hapus Pengguna">
+                  <button v-if="canManageUser(user)" @click="promptDelete(user)" class="w-8 h-8 rounded-lg bg-gray-50 text-gray-500 hover:text-rose-600 hover:bg-rose-50 transition-colors flex items-center justify-center" title="Hapus Pengguna">
                     <i class="fa-solid fa-trash-can"></i>
                   </button>
                 </div>
@@ -105,9 +105,7 @@
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1.5">Role (Akses) *</label>
               <select v-model="form.role" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all appearance-none">
-                <option value="SALESMAN">SALESMAN</option>
-                <option value="SUPERVISOR">SUPERVISOR</option>
-                <option value="ADMIN">ADMIN</option>
+                <option v-for="role in manageableRoles" :key="role" :value="role">{{ role }}</option>
               </select>
             </div>
 
@@ -132,7 +130,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 
@@ -145,6 +143,16 @@ const showModal = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
 const form = ref({ id: null, userid: '', fullname: '', role: 'SALESMAN' })
+
+const manageableRoles = computed(() => {
+  if (auth.role === 'ADMIN') return ['SALESMAN', 'SUPERVISOR', 'ADMIN']
+  return ['SALESMAN']
+})
+
+const canManageUser = (user) => {
+  if (auth.role === 'ADMIN') return ['SALESMAN', 'SUPERVISOR', 'ADMIN'].includes(user.role)
+  return user.role === 'SALESMAN'
+}
 
 const fetchUsers = async () => {
   try {
@@ -162,17 +170,27 @@ const fetchUsers = async () => {
 
 const openAddModal = () => {
   isEditing.value = false
-  form.value = { id: null, userid: '', fullname: '', role: 'SALESMAN' }
+  form.value = { id: null, userid: '', fullname: '', role: manageableRoles.value[0] }
   showModal.value = true
 }
 
 const openEditModal = (user) => {
+  if (!canManageUser(user)) {
+    alert('Supervisor hanya dapat mengedit pengguna SALESMAN.')
+    return
+  }
+
   isEditing.value = true
   form.value = { id: user.id, userid: user.userid, fullname: user.fullname || '', role: user.role }
   showModal.value = true
 }
 
 const submitForm = async () => {
+  if (!manageableRoles.value.includes(form.value.role)) {
+    alert('Role tidak dapat dikelola oleh akun Anda.')
+    return
+  }
+
   saving.value = true
   try {
     if (isEditing.value) {
@@ -194,6 +212,11 @@ const submitForm = async () => {
 }
 
 const promptDelete = async (user) => {
+  if (!canManageUser(user)) {
+    alert('Supervisor hanya dapat menghapus pengguna SALESMAN.')
+    return
+  }
+
   if (confirm(`Apakah Anda yakin ingin menghapus pengguna ${user.userid}?`)) {
     try {
       await axios.delete(`/api/users/${user.id}`, {
@@ -207,6 +230,11 @@ const promptDelete = async (user) => {
 }
 
 const promptResetPassword = async (user) => {
+  if (!canManageUser(user)) {
+    alert('Supervisor hanya dapat mereset password pengguna SALESMAN.')
+    return
+  }
+
   if (confirm(`Apakah Anda yakin ingin me-reset password ${user.userid} kembali ke 123456?`)) {
     try {
       await axios.post(`/api/users/${user.id}/reset-password`, {}, {
