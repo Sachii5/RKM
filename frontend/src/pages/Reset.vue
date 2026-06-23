@@ -2,7 +2,7 @@
   <div class="reset-page max-w-2xl mx-auto">
     <header class="mb-8">
       <h1 class="page-title text-red-600"><i class="fa-solid fa-triangle-exclamation"></i> Atur Ulang Sistem</h1>
-      <p class="page-subtitle text-red-500">ZONA RISIKO TINGGI: Akses terbatas untuk Admin. Harap berhati-hati.</p>
+      <p class="page-subtitle text-red-500">ZONA RISIKO TINGGI: Reset harus disetujui oleh Admin. Harap berhati-hati.</p>
     </header>
 
     <div class="card glass" style="border-color: rgba(239,68,68,0.3); background: rgba(254, 242, 242, 0.8);">
@@ -10,10 +10,32 @@
       <div class="text-sm text-gray-700 mb-6">
         Proses ini akan secara permanen menempuh tindakan berikut:
         <ul class="list-disc pl-6 mt-2 space-y-1">
-          <li>Pencadangan (backup) lengkap basis data SQLite <code>visits.db</code> ke direktori <code>/backup/</code>.</li>
+          <li>Pencadangan (backup) lengkap data zona dan kunjungan ke direktori <code>/backup/</code>.</li>
           <li>Penghapusan seluruh data penugasan area, rincian pelanggan, dan catatan log kunjungan aktif saat ini.</li>
           <li>Pembersihan berkas cadangan tersimpan yang telah melewati masa simpan 365 hari.</li>
         </ul>
+      </div>
+
+      <div class="approval-box">
+        <label class="approval-label" for="admin-userid">User ID Admin Penyetuju</label>
+        <input
+          id="admin-userid"
+          v-model="adminUserid"
+          type="text"
+          class="approval-input"
+          autocomplete="username"
+          placeholder="Masukkan User ID Admin"
+        />
+
+        <label class="approval-label" for="admin-password">Password Admin Penyetuju</label>
+        <input
+          id="admin-password"
+          v-model="adminPassword"
+          type="password"
+          class="approval-input"
+          autocomplete="current-password"
+          placeholder="Masukkan Password Admin"
+        />
       </div>
 
       <div v-if="successMessage" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-6">
@@ -46,8 +68,15 @@ const auth = useAuthStore()
 const loading = ref(false)
 const successMessage = ref('')
 const errorMessage = ref('')
+const adminUserid = ref('')
+const adminPassword = ref('')
 
 const confirmReset = async () => {
+  if (!adminUserid.value || !adminPassword.value) {
+    errorMessage.value = 'User ID dan password Admin penyetuju wajib diisi.'
+    return
+  }
+
   const confirm = window.confirm('PERINGATAN: Tindakan ini akan menghapus seluruh data penugasan area dan kunjungan aktif dari semua salesman, dengan pencadangan (backup) otomatis dibuat sebelumnya. Apakah Anda yakin ingin melanjutkan?')
   if (!confirm) return
 
@@ -56,9 +85,13 @@ const confirmReset = async () => {
   errorMessage.value = ''
 
   try {
-    const res = await axios.post('/api/reset', {}, {
+    const res = await axios.post('/api/reset', {
+      adminUserid: adminUserid.value,
+      adminPassword: adminPassword.value
+    }, {
       headers: { Authorization: `Bearer ${auth.token}` }
     })
+    adminPassword.value = ''
     successMessage.value = `Sistem berhasil diatur ulang. Cadangan data ${res.data.backupFilename} telah diamankan.`
   } catch (err) {
     errorMessage.value = err.response?.data?.error || 'Kegagalan menjalankan proses atur ulang pada server.'
@@ -89,4 +122,32 @@ const confirmReset = async () => {
 .py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
 .relative { position: relative; }
 .mb-6 { margin-bottom: 1.5rem; }
+.approval-box {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(239,68,68,0.25);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+.approval-label {
+  display: block;
+  color: #7F1D1D;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.375rem;
+}
+.approval-label:not(:first-child) {
+  margin-top: 0.875rem;
+}
+.approval-input {
+  width: 100%;
+  border: 1px solid #FCA5A5;
+  border-radius: 0.5rem;
+  color: #111827;
+  padding: 0.75rem 0.875rem;
+}
+.approval-input:focus {
+  border-color: #DC2626;
+  outline: none;
+}
 </style>

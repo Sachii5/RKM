@@ -6,6 +6,7 @@ const db = require('../db/pg_ops');
 const { getZoneByRadius, getZoneByKelurahan, createZoneTransaction, softDeleteZone } = require('../services/zone.service');
 const { getTodayRoute } = require('../services/route.service');
 const { performResetAndBackup } = require('../services/backup.service');
+const authService = require('../services/auth.service');
 const { isValidSalesman, getTodayDateString } = require('../utils/helpers');
 const { getMonthlyEvaluation, getSurveyAnalytics } = require('../controllers/analytics.controller');
 
@@ -41,6 +42,7 @@ const isValidDateFormat = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d);
 const isValidSalesmanCode = (s) => typeof s === 'string' && /^[A-Z]{2,5}$/i.test(s.trim());
 const isPositiveInteger = (v) => Number.isInteger(Number(v)) && Number(v) > 0;
 const sanitizeString = (s, maxLen = 100) => typeof s === 'string' ? s.trim().substring(0, maxLen) : '';
+const isWithinMaxLength = (s, maxLen) => !s || (typeof s === 'string' && s.length <= maxLen);
 
 // GET /api/members (Used by Map plotting for Supervisors/Admins)
 router.get('/members', authenticate, requireSupervisorOrAbove, async (req, res) => {
@@ -497,6 +499,12 @@ router.post('/visit/:visit_id/survey', authenticate, requireSalesman, async (req
   if (!visit_id || !member_code) {
     return res.status(400).json({ error: 'visit_id dan member_code wajib diisi' });
   }
+  if (!isWithinMaxLength(perlu_kunjungan_rutin, 255)) {
+    return res.status(400).json({ error: 'Jawaban kunjungan rutin maksimal 255 karakter' });
+  }
+  if (!isWithinMaxLength(berhasil_order, 255)) {
+    return res.status(400).json({ error: 'Jawaban berhasil order maksimal 255 karakter' });
+  }
 
   try {
     // Validasi eksistensi visit_id
@@ -543,10 +551,24 @@ router.post('/visit/:visit_id/survey', authenticate, requireSalesman, async (req
 
 // POST /api/reset (Admin & Supervisor)
 router.post('/reset', authenticate, requireSupervisorOrAbove, async (req, res) => {
+  const { adminUserid, adminPassword } = req.body;
+
+  if (!adminUserid || !adminPassword) {
+    return res.status(400).json({ error: 'Persetujuan Admin wajib diisi sebelum reset sistem.' });
+  }
+
   try {
+    const approval = await authService.loginUser(adminUserid, adminPassword);
+    if (approval.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Reset sistem harus disetujui oleh akun ADMIN.' });
+    }
+
     const backupFilename = await performResetAndBackup();
     res.json({ success: true, backupFilename });
   } catch (err) {
+    if (err.message === 'Invalid credentials' || err.message === 'Unauthorized role structure') {
+      return res.status(403).json({ error: 'Persetujuan Admin tidak valid.' });
+    }
     res.status(500).json({ error: err.message });
   }
 });
