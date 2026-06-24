@@ -186,12 +186,34 @@
                 <th class="px-5 py-4 font-bold">Status Kunjungan</th>
                 <th class="px-5 py-4 font-bold">Status Order</th>
                 <th class="px-5 py-4 font-bold text-center">Waktu Kunjungan</th>
-                <th class="px-5 py-4 font-bold text-center">Aksi</th>
+                <th class="px-5 py-4 font-bold text-center">Lokasi</th>
+                <th class="px-5 py-4 font-bold text-center sticky right-0 bg-slate-50 z-10 shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.6)] desktop-action-cell">Aksi</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-50">
-              <tr v-for="v in zoneVisits" :key="v.member_code" class="bg-white hover:bg-slate-50/60 transition-colors">
-                <td class="px-5 py-3 font-bold text-gray-800">{{ v.member_name }}</td>
+              <tr v-for="v in zoneVisits" :key="`${v.visit_log_id}-${v.member_code}`" class="bg-white hover:bg-slate-50/60 transition-colors">
+                <td class="px-5 py-3 font-bold text-gray-800">
+                  {{ v.member_name }}
+                  <div
+                    v-if="v.visited === true && v.is_closed === false && v.is_approved === false"
+                    class="mobile-visit-actions"
+                  >
+                    <button
+                      @click="promptApprove(v)"
+                      class="bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm transition-colors text-xs font-medium py-1.5 px-3 rounded-lg flex items-center justify-center gap-1"
+                      :disabled="approving[v.member_code]"
+                    >
+                      <i class="fa-solid fa-check"></i> Terima
+                    </button>
+                    <button
+                      @click="rejectVisit(v)"
+                      class="bg-rose-500 hover:bg-rose-600 text-white shadow-sm transition-colors text-xs font-medium py-1.5 px-3 rounded-lg flex items-center justify-center gap-1"
+                      :disabled="approving[v.member_code]"
+                    >
+                      <i class="fa-solid fa-xmark"></i> Tolak
+                    </button>
+                  </div>
+                </td>
                 <td class="px-5 py-3 text-sm font-mono text-gray-500 bg-gray-50/50">{{ v.member_code }}</td>
                 <td class="px-5 py-3 text-sm">
                   <span v-if="v.is_approved === true" class="bg-emerald-100/60 text-emerald-700 py-1 px-3 rounded-full text-xs font-bold border border-emerald-200"><i class="fa-solid fa-circle-check mr-1"></i>Selesai</span>
@@ -207,7 +229,22 @@
                   <div class="bg-gray-50 py-1 px-2 rounded-md inline-block">{{ formatDateTime(v.visited_at) }}</div>
                   <div v-if="v.is_approved === true" class="text-[10px] text-emerald-600 mt-1 font-medium bg-emerald-50 px-2 py-0.5 rounded-md inline-block">Approve: {{ formatDateTime(v.approved_at) }}</div>
                 </td>
-                <td class="px-5 py-3 text-center">
+                <td class="px-5 py-3 text-center text-xs">
+                  <a
+                    v-if="v.visit_lat && v.visit_lng"
+                    :href="mapsUrl(v)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-blue-600 hover:underline font-medium"
+                  >
+                    Buka Maps
+                  </a>
+                  <div v-if="v.visit_accuracy_m != null" class="text-[10px] text-gray-500 mt-1">
+                    Akurasi {{ Math.round(v.visit_accuracy_m) }} m
+                  </div>
+                  <span v-if="!v.visit_lat || !v.visit_lng" class="text-gray-400">-</span>
+                </td>
+                <td class="px-5 py-3 text-center sticky right-0 bg-white z-10 shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.6)] desktop-action-cell">
                   <div class="flex items-center justify-center gap-2">
                     <button 
                       v-if="v.visited === true && v.is_closed === false && v.is_approved === false" 
@@ -445,6 +482,10 @@ const openVisitsModal = async (zone) => {
   }
 }
 
+const mapsUrl = (visit) => {
+  return `https://www.google.com/maps?q=${visit.visit_lat},${visit.visit_lng}`
+}
+
 const promptApprove = (visit) => {
   selectedVisitForApproval.value = visit
   showingPhotoModal.value = true
@@ -602,6 +643,9 @@ onMounted(() => fetchZones())
 .text-blue-500 { color: #3b82f6; }
 .font-mono { font-family: monospace; }
 .mb-0 { margin-bottom: 0; }
+.mobile-visit-actions {
+  display: none;
+}
 
 /* Modal Styles */
 .modal-overlay {
@@ -662,6 +706,18 @@ onMounted(() => fetchZones())
   table th, table td {
     padding: 8px 4px !important;
     font-size: 0.7rem !important;
+  }
+  .desktop-action-cell {
+    display: none;
+  }
+  .mobile-visit-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin-top: 0.5rem;
+  }
+  .mobile-visit-actions button {
+    min-width: 4.5rem;
   }
   .btn-success {
     padding: 4px 8px !important;

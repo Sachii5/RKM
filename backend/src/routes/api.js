@@ -15,6 +15,14 @@ const { requireSupervisorOrAbove, requireSalesman, requireAdmin } = require('../
 
 const multer = require('multer');
 const path = require('path');
+const MAX_SURVEY_PHOTO_SIZE_BYTES = 15 * 1024 * 1024;
+const ALLOWED_SURVEY_PHOTO_MIMES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif'
+]);
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -27,12 +35,12 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ 
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  limits: { fileSize: MAX_SURVEY_PHOTO_SIZE_BYTES },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    if (ALLOWED_SURVEY_PHOTO_MIMES.has(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Hanya file gambar yang diperbolehkan!'));
+      cb(new Error('Hanya file foto JPG, PNG, WEBP, HEIC, atau HEIF yang diperbolehkan!'));
     }
   }
 });
@@ -376,10 +384,16 @@ router.get('/zone/:id/visits', authenticate, requireSupervisorOrAbove, async (re
     const zone = resZone.rows[0];
 
     const resVisits = await db.query(`
-      SELECT zm.member_code, zm.member_name, v.id as visit_log_id, v.visited, v.is_closed, v.visited_at, v.is_approved, v.approved_at, vs.foto_kunjungan_url
+      SELECT zm.member_code, zm.member_name, v.id as visit_log_id, v.visited, v.is_closed, v.visited_at, v.is_approved, v.approved_at, vs.foto_kunjungan_url, vs.visit_lat, vs.visit_lng, vs.visit_accuracy_m, vs.visit_captured_at
       FROM zone_members zm
       JOIN visit_logs v ON zm.zone_id = v.zone_id AND zm.member_code = v.member_code
-      LEFT JOIN visit_surveys vs ON v.id = vs.visit_id
+      LEFT JOIN LATERAL (
+        SELECT foto_kunjungan_url, visit_lat, visit_lng, visit_accuracy_m, visit_captured_at
+        FROM visit_surveys
+        WHERE visit_id = v.id
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+      ) vs ON true
       WHERE zm.zone_id = $1
         AND v.visited_at >= DATE_TRUNC('month', $2::timestamp)
         AND v.visited_at < DATE_TRUNC('month', $2::timestamp) + INTERVAL '1 month'
@@ -491,7 +505,11 @@ router.post('/visit/:visit_id/survey', authenticate, requireSalesman, async (req
     perlu_kunjungan_rutin,
     saran_kritik,
     berhasil_order,
-    foto_kunjungan_url
+    foto_kunjungan_url,
+    visit_lat,
+    visit_lng,
+    visit_accuracy_m,
+    visit_captured_at
   } = req.body;
 
   const advisor_name = req.user.userid; // Get from JWT token
@@ -506,6 +524,21 @@ router.post('/visit/:visit_id/survey', authenticate, requireSalesman, async (req
     return res.status(400).json({ error: 'Jawaban berhasil order maksimal 255 karakter' });
   }
 
+  const lat = Number(visit_lat);
+  const lng = Number(visit_lng);
+  const accuracy = Number(visit_accuracy_m);
+  const capturedAt = visit_captured_at ? new Date(visit_captured_at) : null;
+
+  if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lng) || lng < -180 || lng > 180) {
+    return res.status(400).json({ error: 'Lokasi GPS wajib diaktifkan dan harus valid' });
+  }
+  if (!Number.isFinite(accuracy) || accuracy < 0) {
+    return res.status(400).json({ error: 'Akurasi GPS tidak valid' });
+  }
+  if (!capturedAt || Number.isNaN(capturedAt.getTime())) {
+    return res.status(400).json({ error: 'Waktu pengambilan lokasi tidak valid' });
+  }
+
   try {
     // Validasi eksistensi visit_id
     const checkVisit = await db.query('SELECT id FROM visit_logs WHERE id = $1', [visit_id]);
@@ -517,8 +550,9 @@ router.post('/visit/:visit_id/survey', authenticate, requireSalesman, async (req
       INSERT INTO visit_surveys (
         visit_id, member_code, advisor_name, kendala_belanja, produk_mahal, 
         produk_belum_ada, sumber_info_promo, promo_menarik, 
-        perlu_kunjungan_rutin, saran_kritik, berhasil_order, foto_kunjungan_url
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        perlu_kunjungan_rutin, saran_kritik, berhasil_order, foto_kunjungan_url,
+        visit_lat, visit_lng, visit_accuracy_m, visit_captured_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING id
     `;
     
@@ -537,7 +571,11 @@ router.post('/visit/:visit_id/survey', authenticate, requireSalesman, async (req
       perlu_kunjungan_rutin || null,
       saran_kritik || null,
       berhasil_order || null,
-      foto_kunjungan_url || null
+      foto_kunjungan_url || null,
+      lat,
+      lng,
+      accuracy,
+      capturedAt.toISOString()
     ];
 
     const result = await db.query(query, values);
