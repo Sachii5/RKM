@@ -78,12 +78,20 @@ CREATE TABLE IF NOT EXISTS visit_surveys (
     saran_kritik TEXT,
     berhasil_order TEXT,
     foto_kunjungan_url VARCHAR(255),
+    visit_lat DOUBLE PRECISION,
+    visit_lng DOUBLE PRECISION,
+    visit_accuracy_m DOUBLE PRECISION,
+    visit_captured_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Perlu longgar karena pilihan "Lainnya" bisa berisi alasan bebas dari user lapangan
 ALTER TABLE visit_surveys ALTER COLUMN perlu_kunjungan_rutin TYPE TEXT;
 ALTER TABLE visit_surveys ALTER COLUMN berhasil_order TYPE TEXT;
+ALTER TABLE visit_surveys ADD COLUMN IF NOT EXISTS visit_lat DOUBLE PRECISION;
+ALTER TABLE visit_surveys ADD COLUMN IF NOT EXISTS visit_lng DOUBLE PRECISION;
+ALTER TABLE visit_surveys ADD COLUMN IF NOT EXISTS visit_accuracy_m DOUBLE PRECISION;
+ALTER TABLE visit_surveys ADD COLUMN IF NOT EXISTS visit_captured_at TIMESTAMP;
 
 -- Indexes for performance optimization (Safe & Zero Downtime for existing data)
 CREATE INDEX IF NOT EXISTS idx_visit_surveys_created_at ON visit_surveys(created_at);

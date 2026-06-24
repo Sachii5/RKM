@@ -86,7 +86,7 @@ const confirmReset = async () => {
 
   try {
     const res = await axios.post('/api/reset', {
-      adminUserid: adminUserid.value,
+      adminUserid: adminUserid.value.trim().toUpperCase(),
       adminPassword: adminPassword.value
     }, {
       headers: { Authorization: `Bearer ${auth.token}` }

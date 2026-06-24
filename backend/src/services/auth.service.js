@@ -15,7 +15,7 @@ const determineRole = (email, salesmanCode) => {
 
 const loginUser = async (userid, password) => {
   // 1. Check users_local table first (for Salesman or any manually created users)
-  const upperUserId = userid.toUpperCase();
+  const upperUserId = userid.trim().toUpperCase();
   const resUser = await db.query('SELECT * FROM users_local WHERE userid = $1', [upperUserId]);
   
   if (resUser.rows.length > 0) {
@@ -52,7 +52,7 @@ const loginUser = async (userid, password) => {
   // 2. Check PG for Admin / Supervisor (tbmaster_user)
   // Assuming fields: userid, username, userpassword, email
   const query = `SELECT userid, username, userpassword, email FROM tbmaster_user WHERE userid = $1`;
-  const res = await pool.query(query, [userid]);
+  const res = await pool.query(query, [upperUserId]);
   
   if (res.rows.length === 0) {
     throw new Error('Invalid credentials');

@@ -136,9 +136,9 @@
               <label class="btn btn-primary cursor-pointer w-full sm:w-auto text-center">
                 <span class="flex items-center justify-center gap-2">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                  Pilih Foto
+                  Ambil Foto
                 </span>
-                <input type="file" @change="handleFileUpload" accept="image/*" class="hidden">
+                <input type="file" @change="handleFileUpload" accept="image/*" capture="environment" class="hidden">
               </label>
               <div v-if="fileName" class="text-sm text-green-700 bg-green-50 px-4 py-2 rounded-lg border border-green-200 w-full flex items-center gap-2">
                 <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
@@ -186,6 +186,13 @@ const loading = ref(false)
 const fileName = ref('')
 const photoFile = ref(null)
 const errors = ref({})
+const MAX_PHOTO_AGE_MS = 2 * 60 * 1000
+const MAX_SOURCE_PHOTO_SIZE_BYTES = 40 * 1024 * 1024
+const MAX_UPLOAD_PHOTO_SIZE_BYTES = 15 * 1024 * 1024
+const PHOTO_MAX_DIMENSION = 1600
+const PHOTO_JPEG_QUALITY = 0.78
+const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+const GEOLOCATION_TIMEOUT_MS = 15000
 
 const flags = reactive({
   kendalaOther: false,
@@ -213,6 +220,31 @@ const form = reactive({
 const handleFileUpload = (e) => {
   const file = e.target.files[0]
   if (file) {
+    if (!ALLOWED_PHOTO_TYPES.includes(file.type)) {
+      alert('Format foto harus JPG, PNG, WEBP, HEIC, atau HEIF.')
+      e.target.value = ''
+      fileName.value = ''
+      photoFile.value = null
+      return
+    }
+
+    if (file.size > MAX_SOURCE_PHOTO_SIZE_BYTES) {
+      alert('Ukuran foto terlalu besar. Silakan atur kualitas kamera lebih rendah atau ambil ulang foto.')
+      e.target.value = ''
+      fileName.value = ''
+      photoFile.value = null
+      return
+    }
+
+    const ageMs = Date.now() - file.lastModified
+    if (ageMs > MAX_PHOTO_AGE_MS) {
+      alert('Foto harus diambil langsung dari kamera. Silakan ambil foto baru.')
+      e.target.value = ''
+      fileName.value = ''
+      photoFile.value = null
+      return
+    }
+
     fileName.value = file.name
     photoFile.value = file
   } else {
@@ -220,6 +252,88 @@ const handleFileUpload = (e) => {
     photoFile.value = null
   }
 }
+
+const loadImageFromFile = (file) => new Promise((resolve, reject) => {
+  const image = new Image()
+  const objectUrl = URL.createObjectURL(file)
+
+  image.onload = () => {
+    URL.revokeObjectURL(objectUrl)
+    resolve(image)
+  }
+  image.onerror = () => {
+    URL.revokeObjectURL(objectUrl)
+    reject(new Error('Gagal membaca foto'))
+  }
+  image.src = objectUrl
+})
+
+const canvasToBlob = (canvas, type, quality) => new Promise((resolve, reject) => {
+  canvas.toBlob((blob) => {
+    if (blob) resolve(blob)
+    else reject(new Error('Gagal mengompres foto'))
+  }, type, quality)
+})
+
+const compressPhoto = async (file) => {
+  try {
+    const image = await loadImageFromFile(file)
+    const scale = Math.min(1, PHOTO_MAX_DIMENSION / Math.max(image.width, image.height))
+    const width = Math.round(image.width * scale)
+    const height = Math.round(image.height * scale)
+
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(image, 0, 0, width, height)
+
+    const blob = await canvasToBlob(canvas, 'image/jpeg', PHOTO_JPEG_QUALITY)
+    if (blob.size >= file.size) return file
+
+    const compressedName = file.name.replace(/\.[^.]+$/, '') + '.jpg'
+    return new File([blob], compressedName, {
+      type: 'image/jpeg',
+      lastModified: file.lastModified
+    })
+  } catch (err) {
+    console.warn('Photo compression skipped:', err.message)
+    return file
+  }
+}
+
+const getCurrentLocation = () => new Promise((resolve, reject) => {
+  if (!navigator.geolocation) {
+    reject(new Error('Browser tidak mendukung GPS. Gunakan perangkat/browser yang mendukung lokasi.'))
+    return
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      resolve({
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+        capturedAt: new Date(position.timestamp).toISOString()
+      })
+    },
+    (error) => {
+      if (error.code === error.PERMISSION_DENIED) {
+        reject(new Error('Izin lokasi ditolak. Aktifkan izin lokasi untuk mengirim laporan.'))
+      } else if (error.code === error.TIMEOUT) {
+        reject(new Error('GPS terlalu lama merespons. Pastikan lokasi aktif lalu coba lagi.'))
+      } else {
+        reject(new Error('Gagal mengambil lokasi GPS. Pastikan lokasi aktif lalu coba lagi.'))
+      }
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: GEOLOCATION_TIMEOUT_MS,
+      maximumAge: 0
+    }
+  )
+})
 
 const compileArrays = () => {
   const kendala = [...form.kendalaBelanja]
@@ -268,10 +382,16 @@ const submitSurvey = async () => {
   loading.value = true
 
   try {
+    const location = await getCurrentLocation()
     let uploadedPhotoUrl = ''
     if (photoFile.value) {
+      const uploadFile = await compressPhoto(photoFile.value)
+      if (uploadFile.size > MAX_UPLOAD_PHOTO_SIZE_BYTES) {
+        alert('Foto masih terlalu besar setelah dikompres. Silakan atur kualitas kamera lebih rendah atau ambil ulang foto.')
+        return
+      }
       const formData = new FormData()
-      formData.append('photo', photoFile.value)
+      formData.append('photo', uploadFile)
       
       const uploadRes = await axios.post('/api/upload/survey-photo', formData, {
         headers: { 
@@ -294,7 +414,11 @@ const submitSurvey = async () => {
       perlu_kunjungan_rutin: compiled.kunjungan,
       saran_kritik: form.saranKritik,
       berhasil_order: compiled.berhasil,
-      foto_kunjungan_url: uploadedPhotoUrl
+      foto_kunjungan_url: uploadedPhotoUrl,
+      visit_lat: location.lat,
+      visit_lng: location.lng,
+      visit_accuracy_m: location.accuracy,
+      visit_captured_at: location.capturedAt
     }
 
     await axios.post(`/api/visit/${props.visitId}/survey`, payload, {
