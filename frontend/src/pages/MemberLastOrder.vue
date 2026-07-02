@@ -9,14 +9,16 @@
       <div class="filters">
         <div v-if="isManagement" class="filter-field">
           <label class="filter-label">Salesman</label>
-          <input
-            v-model.trim="salesmanFilter"
-            type="text"
+          <select
+            v-model="salesmanFilter"
             class="form-control"
-            placeholder="Contoh: FRL"
-            maxlength="5"
-            @keyup.enter="applyFilters"
-          />
+            @change="applyFilters"
+          >
+            <option value="">Semua Salesman</option>
+            <option v-for="salesman in salesmanOptions" :key="salesman" :value="salesman">
+              {{ salesman }}
+            </option>
+          </select>
         </div>
         <div class="filter-field">
           <label class="filter-label">Baris</label>
@@ -65,7 +67,6 @@
               <th>Kode</th>
               <th>Nama Member</th>
               <th>No. HP</th>
-              <th>Email</th>
               <th>Alamat</th>
               <th>Kelurahan</th>
               <th>Kecamatan</th>
@@ -90,7 +91,6 @@
                 </a>
                 <span v-else class="text-gray-400">-</span>
               </td>
-              <td class="text-gray-600">{{ row.email_member || '-' }}</td>
               <td class="address-cell">{{ row.alamat || '-' }}</td>
               <td>{{ row.kelurahan || '-' }}</td>
               <td>{{ row.kecamatan || '-' }}</td>
@@ -129,6 +129,7 @@ const rows = ref([])
 const loading = ref(false)
 const errorMessage = ref('')
 const salesmanFilter = ref('')
+const salesmanOptions = ['DND', 'DPT', 'FRL', 'LID']
 const limit = ref(25)
 const pagination = ref({
   page: 1,
