@@ -115,14 +115,13 @@ const createZoneTransaction = async (userId, role, salesmanCode, scheduledDate, 
   const client = await db.connect();
   try {
     await client.query('BEGIN');
-    const now = new Date().toISOString();
     
     // 1. Insert Zone
     const zoneRes = await client.query(`
       INSERT INTO zones (created_at, created_by, salesman_code, zone_type, center_lat, center_lng, radius_km, kelurahan, scheduled_date, total_member, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active')
+      VALUES (timezone('Asia/Jakarta', now()), $1, $2, $3, $4, $5, $6, $7, $8, $9, 'active')
       RETURNING id
-    `, [now, userId, salesmanCode, zoneType, centerLat, centerLng, radiusKm, kelurahan, scheduledDate, members.length]);
+    `, [userId, salesmanCode, zoneType, centerLat, centerLng, radiusKm, kelurahan, scheduledDate, members.length]);
     
     const zoneId = zoneRes.rows[0].id;
 
@@ -147,8 +146,8 @@ const createZoneTransaction = async (userId, role, salesmanCode, scheduledDate, 
     // 3. Audit Log
     await client.query(`
       INSERT INTO audit_logs (user_id, role, action, target_id, created_at)
-      VALUES ($1, $2, 'CREATE_ZONE', $3, $4)
-    `, [userId, role, String(zoneId), now]);
+      VALUES ($1, $2, 'CREATE_ZONE', $3, timezone('Asia/Jakarta', now()))
+    `, [userId, role, String(zoneId)]);
 
     await client.query('COMMIT');
     return zoneId;
@@ -171,8 +170,8 @@ const softDeleteZone = async (userId, role, zoneId) => {
     
     await client.query(`
       INSERT INTO audit_logs (user_id, role, action, target_id, created_at)
-      VALUES ($1, $2, 'DELETE_ZONE', $3, $4)
-    `, [userId, role, String(zoneId), new Date().toISOString()]);
+      VALUES ($1, $2, 'DELETE_ZONE', $3, timezone('Asia/Jakarta', now()))
+    `, [userId, role, String(zoneId)]);
     
     await client.query('COMMIT');
     return true;

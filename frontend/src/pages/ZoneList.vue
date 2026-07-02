@@ -350,6 +350,7 @@ const isManagement = computed(() => ['ADMIN', 'SUPERVISOR'].includes(auth.role))
 
 const formatDate = (d) => dayjs(d).format('DD MMMM YYYY')
 const formatDateTime = (d) => d ? dayjs(d).format('DD/MM/YY HH:mm') : '-'
+const getLocalTimestamp = () => dayjs().format('YYYY-MM-DD HH:mm:ss')
 const formatRupiah = (angka) => {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
@@ -508,7 +509,7 @@ const confirmApprove = async () => {
     const vIndex = zoneVisits.value.findIndex(v => v.member_code === memberCode)
     if (vIndex !== -1) {
       zoneVisits.value[vIndex].is_approved = true
-      zoneVisits.value[vIndex].approved_at = new Date().toISOString()
+      zoneVisits.value[vIndex].approved_at = getLocalTimestamp()
     }
 
     // Also update zone aggregate counters
