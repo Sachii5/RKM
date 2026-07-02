@@ -168,6 +168,9 @@ let map = null
 let markersLayer = null
 let circleLayer = null
 let centerMarker = null
+let isComponentActive = false
+let fetchMembersController = null
+let mapReadyTimeout = null
 
 // CDN Marker Icons
 const createIcon = (color) => L.icon({
@@ -240,15 +243,25 @@ const resetPreview = () => {
 
 const fetchMembers = async () => {
   resetPreview()
+  if (fetchMembersController) {
+    fetchMembersController.abort()
+  }
+  const controller = new AbortController()
+  fetchMembersController = controller
+
   try {
     const [membersRes, zonedRes] = await Promise.all([
       axios.get('/api/members', {
-        headers: { Authorization: `Bearer ${auth.token}` }
+        headers: { Authorization: `Bearer ${auth.token}` },
+        signal: controller.signal
       }),
       axios.get('/api/zones/member-codes', {
-        headers: { Authorization: `Bearer ${auth.token}` }
+        headers: { Authorization: `Bearer ${auth.token}` },
+        signal: controller.signal
       })
     ])
+
+    if (!isComponentActive || !map) return
     
     // Compatibility if backend returns array or object
     if (Array.isArray(zonedRes.data)) {
@@ -273,8 +286,15 @@ const fetchMembers = async () => {
     }
     drawMapEntities()
   } catch (err) {
+    if (!isComponentActive || axios.isCancel(err) || err.code === 'ERR_CANCELED') {
+      return
+    }
     console.error(err)
     alert('Gagal memuat data pelanggan')
+  } finally {
+    if (fetchMembersController === controller) {
+      fetchMembersController = null
+    }
   }
 }
 
@@ -508,6 +528,7 @@ const drawMapEntities = (skipFitBounds = false) => {
 
 // Boot Map using Vanilla Leaflet binding tightly to a generic div ID seamlessly bypassing buggy vue-wrappers.
 onMounted(() => {
+  isComponentActive = true
   map = L.map('leaflet-map').setView([-6.7320, 108.5523], 12)
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
@@ -516,16 +537,31 @@ onMounted(() => {
 
   map.on('click', onMapClick)
 
-  setTimeout(() => {
+  mapReadyTimeout = setTimeout(() => {
+    if (!isComponentActive || !map) return
     map.invalidateSize()
     fetchMembers()
   }, 200)
 })
 
 onUnmounted(() => {
+  isComponentActive = false
+  if (mapReadyTimeout) {
+    clearTimeout(mapReadyTimeout)
+    mapReadyTimeout = null
+  }
+  if (fetchMembersController) {
+    fetchMembersController.abort()
+    fetchMembersController = null
+  }
   if (map) {
     map.remove()
+    map = null
   }
+  markersLayer = null
+  circleLayer = null
+  centerMarker = null
+  delete window.__zoningAction
 })
 
 // Trigger invalidation on radius adjustments automatically

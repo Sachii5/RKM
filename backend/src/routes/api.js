@@ -170,7 +170,9 @@ router.get('/zones', authenticate, requireSupervisorOrAbove, async (req, res) =>
     const { salesman_code } = req.query;
     let query = `
       SELECT z.id, z.salesman_code, z.zone_type, z.kelurahan, z.center_lat, z.center_lng,
-             z.radius_km, z.scheduled_date, z.total_member, z.status, z.created_at, z.created_by,
+             z.radius_km, z.scheduled_date, z.total_member, z.status,
+             to_char(z.created_at, 'YYYY-MM-DD HH24:MI:SS') as created_at,
+             z.created_by,
              COUNT(CASE WHEN vl.visited = true AND vl.is_closed = false AND vl.is_approved = true THEN 1 END) as visited_count,
              COUNT(CASE WHEN vl.visited = true AND vl.is_closed = false AND vl.is_approved = false THEN 1 END) as pending_approval_count,
              COUNT(CASE WHEN vl.is_closed = true THEN 1 END) as closed_count,
@@ -200,7 +202,8 @@ router.get('/zones/mine', authenticate, requireSalesman, async (req, res) => {
     const salesman = req.user.userid.toUpperCase();
     const resZones = await db.query(`
       SELECT z.id, z.salesman_code, z.zone_type, z.kelurahan, z.scheduled_date,
-             z.total_member, z.status, z.created_at,
+             z.total_member, z.status,
+             to_char(z.created_at, 'YYYY-MM-DD HH24:MI:SS') as created_at,
              COUNT(CASE WHEN vl.visited = true AND vl.is_closed = false AND vl.is_approved = true THEN 1 END) as visited_count,
              COUNT(CASE WHEN vl.visited = true AND vl.is_closed = false AND vl.is_approved = false THEN 1 END) as pending_approval_count,
              COUNT(CASE WHEN vl.is_closed = true THEN 1 END) as closed_count,
@@ -284,15 +287,15 @@ router.post('/visit/mark', authenticate, requireSalesman, async (req, res) => {
   try {
     const resUpdate = await db.query(`
       UPDATE visit_logs vl
-      SET visited = true, is_closed = false, visited_at = $1 
+      SET visited = true, is_closed = false, visited_at = timezone('Asia/Jakarta', now())
       FROM zones z
       WHERE vl.zone_id = z.id
-        AND vl.zone_id = $2 
-        AND vl.member_code = $3 
+        AND vl.zone_id = $1
+        AND vl.member_code = $2
         AND vl.visited = false
         AND vl.visited_at >= DATE_TRUNC('month', z.scheduled_date::timestamp)
         AND vl.visited_at < DATE_TRUNC('month', z.scheduled_date::timestamp) + INTERVAL '1 month'
-    `, [new Date().toISOString(), Number(zone_id), sanitizeString(member_code, 20)]);
+    `, [Number(zone_id), sanitizeString(member_code, 20)]);
     
     if (resUpdate.rowCount === 0) {
       return res.status(404).json({ error: 'Member kunjungan tidak ditemukan untuk zona ini' });
@@ -318,15 +321,15 @@ router.post('/visit/close', authenticate, requireSalesman, async (req, res) => {
   try {
     const resUpdate = await db.query(`
       UPDATE visit_logs vl
-      SET visited = true, is_closed = true, visited_at = $1 
+      SET visited = true, is_closed = true, visited_at = timezone('Asia/Jakarta', now())
       FROM zones z
       WHERE vl.zone_id = z.id
-        AND vl.zone_id = $2 
-        AND vl.member_code = $3 
+        AND vl.zone_id = $1
+        AND vl.member_code = $2
         AND vl.visited = false
         AND vl.visited_at >= DATE_TRUNC('month', z.scheduled_date::timestamp)
         AND vl.visited_at < DATE_TRUNC('month', z.scheduled_date::timestamp) + INTERVAL '1 month'
-    `, [new Date().toISOString(), Number(zone_id), sanitizeString(member_code, 20)]);
+    `, [Number(zone_id), sanitizeString(member_code, 20)]);
     
     if (resUpdate.rowCount === 0) {
       return res.status(404).json({ error: 'Member kunjungan tidak ditemukan untuk zona ini' });
@@ -384,7 +387,12 @@ router.get('/zone/:id/visits', authenticate, requireSupervisorOrAbove, async (re
     const zone = resZone.rows[0];
 
     const resVisits = await db.query(`
-      SELECT zm.member_code, zm.member_name, v.id as visit_log_id, v.visited, v.is_closed, v.visited_at, v.is_approved, v.approved_at, vs.foto_kunjungan_url, vs.visit_lat, vs.visit_lng, vs.visit_accuracy_m, vs.visit_captured_at
+      SELECT zm.member_code, zm.member_name, v.id as visit_log_id, v.visited, v.is_closed,
+             to_char(v.visited_at, 'YYYY-MM-DD HH24:MI:SS') as visited_at,
+             v.is_approved,
+             to_char(v.approved_at, 'YYYY-MM-DD HH24:MI:SS') as approved_at,
+             vs.foto_kunjungan_url, vs.visit_lat, vs.visit_lng, vs.visit_accuracy_m,
+             to_char(vs.visit_captured_at, 'YYYY-MM-DD HH24:MI:SS') as visit_captured_at
       FROM zone_members zm
       JOIN visit_logs v ON zm.zone_id = v.zone_id AND zm.member_code = v.member_code
       LEFT JOIN LATERAL (
@@ -430,16 +438,16 @@ router.post('/visit/approve', authenticate, requireSupervisorOrAbove, async (req
   try {
     const resUpdate = await db.query(`
       UPDATE visit_logs vl
-      SET is_approved = true, approved_at = $1 
+      SET is_approved = true, approved_at = timezone('Asia/Jakarta', now())
       FROM zones z
       WHERE vl.zone_id = z.id
-        AND vl.zone_id = $2 
-        AND vl.member_code = $3 
+        AND vl.zone_id = $1
+        AND vl.member_code = $2
         AND vl.visited = true 
         AND vl.is_approved = false
         AND vl.visited_at >= DATE_TRUNC('month', z.scheduled_date::timestamp)
         AND vl.visited_at < DATE_TRUNC('month', z.scheduled_date::timestamp) + INTERVAL '1 month'
-    `, [new Date().toISOString(), Number(zone_id), sanitizeString(member_code, 20)]);
+    `, [Number(zone_id), sanitizeString(member_code, 20)]);
     
     if (resUpdate.rowCount === 0) {
       return res.status(404).json({ error: 'Kunjungan tidak ditemukan atau sudah disetujui' });
@@ -552,7 +560,7 @@ router.post('/visit/:visit_id/survey', authenticate, requireSalesman, async (req
         produk_belum_ada, sumber_info_promo, promo_menarik, 
         perlu_kunjungan_rutin, saran_kritik, berhasil_order, foto_kunjungan_url,
         visit_lat, visit_lng, visit_accuracy_m, visit_captured_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16::timestamptz AT TIME ZONE 'Asia/Jakarta')
       RETURNING id
     `;
     

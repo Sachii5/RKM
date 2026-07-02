@@ -15,7 +15,10 @@ const getTodayRoute = async (salesmanCode, scheduledDate) => {
 
   // 2. Get zone_members & visit state
   const resMembers = await db.query(`
-    SELECT zm.member_code, zm.member_name, zm.lat, zm.lng, zm.alamat_snapshot, zm.hp_snapshot, zm.email_snapshot, v.id as visit_id, v.visited, v.is_closed, v.visited_at, v.is_approved
+    SELECT zm.member_code, zm.member_name, zm.lat, zm.lng, zm.alamat_snapshot, zm.hp_snapshot, zm.email_snapshot,
+           v.id as visit_id, v.visited, v.is_closed,
+           to_char(v.visited_at, 'YYYY-MM-DD HH24:MI:SS') as visited_at,
+           v.is_approved
     FROM zone_members zm
     JOIN visit_logs v ON zm.zone_id = v.zone_id AND zm.member_code = v.member_code
     WHERE zm.zone_id = $1

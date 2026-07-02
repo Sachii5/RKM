@@ -144,6 +144,15 @@
                 <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                 <span class="truncate">{{ fileName }} siap diunggah</span>
               </div>
+              <div v-if="loading" class="w-full bg-white rounded-lg border border-blue-100 p-3 text-sm text-blue-800">
+                <div class="flex justify-between gap-3 mb-2">
+                  <span>{{ submitStatus }}</span>
+                  <span v-if="uploadProgress > 0">{{ uploadProgress }}%</span>
+                </div>
+                <div v-if="uploadProgress > 0" class="h-2 bg-blue-100 rounded-full overflow-hidden">
+                  <div class="h-full bg-blue-600 transition-all duration-200" :style="{ width: `${uploadProgress}%` }"></div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -183,16 +192,20 @@ const emit = defineEmits(['close', 'submit'])
 const auth = useAuthStore()
 
 const loading = ref(false)
+const submitStatus = ref('')
+const uploadProgress = ref(0)
 const fileName = ref('')
 const photoFile = ref(null)
 const errors = ref({})
 const MAX_PHOTO_AGE_MS = 2 * 60 * 1000
 const MAX_SOURCE_PHOTO_SIZE_BYTES = 40 * 1024 * 1024
 const MAX_UPLOAD_PHOTO_SIZE_BYTES = 15 * 1024 * 1024
-const PHOTO_MAX_DIMENSION = 1600
-const PHOTO_JPEG_QUALITY = 0.78
+const PHOTO_MAX_DIMENSION = 1280
+const PHOTO_JPEG_QUALITY = 0.68
 const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
 const GEOLOCATION_TIMEOUT_MS = 15000
+const SURVEY_PHOTO_UPLOAD_TIMEOUT_MS = 90000
+const SURVEY_SAVE_TIMEOUT_MS = 30000
 
 const flags = reactive({
   kendalaOther: false,
@@ -352,6 +365,22 @@ const compileArrays = () => {
   return { kendala, mahal, sumber, promo, kunjungan, berhasil }
 }
 
+const getSurveyErrorMessage = (err) => {
+  if (err.code === 'ECONNABORTED') {
+    return 'Koneksi terlalu lambat saat mengirim laporan. Pastikan sinyal stabil lalu coba lagi.'
+  }
+  if (err.message === 'Network Error') {
+    return 'Koneksi ke server terputus. Pastikan internet aktif lalu coba lagi.'
+  }
+  if (err.response?.status === 413) {
+    return 'Foto terlalu besar untuk dikirim. Silakan ambil ulang foto dengan kualitas kamera lebih rendah.'
+  }
+  if (err.response?.data?.error) {
+    return err.response.data.error
+  }
+  return err.message || 'Gagal mengirim survei'
+}
+
 const submitSurvey = async () => {
   // Validasi Input Wajib
   if (!form.perluKunjunganRutin) {
@@ -380,11 +409,14 @@ const submitSurvey = async () => {
   }
 
   loading.value = true
+  uploadProgress.value = 0
+  submitStatus.value = 'Mengambil lokasi GPS...'
 
   try {
     const location = await getCurrentLocation()
     let uploadedPhotoUrl = ''
     if (photoFile.value) {
+      submitStatus.value = 'Mengompres foto...'
       const uploadFile = await compressPhoto(photoFile.value)
       if (uploadFile.size > MAX_UPLOAD_PHOTO_SIZE_BYTES) {
         alert('Foto masih terlalu besar setelah dikompres. Silakan atur kualitas kamera lebih rendah atau ambil ulang foto.')
@@ -392,17 +424,25 @@ const submitSurvey = async () => {
       }
       const formData = new FormData()
       formData.append('photo', uploadFile)
-      
+
+      submitStatus.value = 'Mengunggah foto...'
       const uploadRes = await axios.post('/api/upload/survey-photo', formData, {
         headers: { 
           Authorization: `Bearer ${auth.token}`,
           'Content-Type': 'multipart/form-data'
+        },
+        timeout: SURVEY_PHOTO_UPLOAD_TIMEOUT_MS,
+        onUploadProgress: (event) => {
+          if (!event.total) return
+          uploadProgress.value = Math.min(99, Math.round((event.loaded * 100) / event.total))
         }
       })
+      uploadProgress.value = 100
       uploadedPhotoUrl = uploadRes.data.url
     }
 
     const compiled = compileArrays()
+    submitStatus.value = 'Menyimpan laporan...'
 
     const payload = {
       member_code: props.memberCode,
@@ -422,7 +462,8 @@ const submitSurvey = async () => {
     }
 
     await axios.post(`/api/visit/${props.visitId}/survey`, payload, {
-      headers: { Authorization: `Bearer ${auth.token}` }
+      headers: { Authorization: `Bearer ${auth.token}` },
+      timeout: SURVEY_SAVE_TIMEOUT_MS
     })
     
     // Reset form after submit
@@ -439,9 +480,11 @@ const submitSurvey = async () => {
     
     emit('submit')
   } catch (err) {
-    alert(err.response?.data?.error || 'Gagal mengirim survei')
+    alert(getSurveyErrorMessage(err))
   } finally {
     loading.value = false
+    submitStatus.value = ''
+    uploadProgress.value = 0
   }
 }
 </script>

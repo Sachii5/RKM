@@ -116,7 +116,7 @@ const markVisited = async (memberCode) => {
     const target = visits.value.find(v => v.member_code === memberCode)
     if (target) {
       target.visited = true
-      target.visited_at = new Date().toISOString()
+      target.visited_at = dayjs().format('YYYY-MM-DD HH:mm:ss')
     }
   } catch (err) {
     alert(err.response?.data?.error || 'Gagal menandai kunjungan')
