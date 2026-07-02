@@ -635,20 +635,20 @@ router.post('/reset', authenticate, requireSupervisorOrAbove, async (req, res) =
   const { adminUserid, adminPassword } = req.body;
 
   if (!adminUserid || !adminPassword) {
-    return res.status(400).json({ error: 'Persetujuan Admin wajib diisi sebelum reset sistem.' });
+    return res.status(400).json({ error: 'Approval MGR wajib diisi sebelum reset sistem.' });
   }
 
   try {
     const approval = await authService.loginUser(adminUserid, adminPassword);
     if (approval.role !== 'ADMIN') {
-      return res.status(403).json({ error: 'Reset sistem harus disetujui oleh akun ADMIN.' });
+      return res.status(403).json({ error: 'Reset sistem harus disetujui oleh akun MGR.' });
     }
 
     const backupFilename = await performResetAndBackup();
     res.json({ success: true, backupFilename });
   } catch (err) {
     if (err.message === 'Invalid credentials' || err.message === 'Unauthorized role structure') {
-      return res.status(403).json({ error: 'Persetujuan Admin tidak valid.' });
+      return res.status(403).json({ error: 'Approval MGR tidak valid.' });
     }
     res.status(500).json({ error: err.message });
   }

@@ -54,16 +54,16 @@ const app = express();
 app.use(express.json());
 app.use('/api', apiRoutes);
 
-describe('Reset route admin approval', () => {
+describe('Reset route manager approval', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  test('rejects reset without admin approval credentials', async () => {
+  test('rejects reset without manager approval credentials', async () => {
     const res = await request(app).post('/api/reset').send({});
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/Persetujuan Admin wajib/);
+    expect(res.body.error).toMatch(/Approval MGR wajib/);
     expect(authService.loginUser).not.toHaveBeenCalled();
     expect(performResetAndBackup).not.toHaveBeenCalled();
   });
@@ -76,11 +76,11 @@ describe('Reset route admin approval', () => {
       .send({ adminUserid: 'SPV', adminPassword: 'secret' });
 
     expect(res.status).toBe(403);
-    expect(res.body.error).toMatch(/akun ADMIN/);
+    expect(res.body.error).toMatch(/akun MGR/);
     expect(performResetAndBackup).not.toHaveBeenCalled();
   });
 
-  test('rejects reset when admin approval credentials are invalid', async () => {
+  test('rejects reset when manager approval credentials are invalid', async () => {
     authService.loginUser.mockRejectedValue(new Error('Invalid credentials'));
 
     const res = await request(app)
@@ -104,4 +104,5 @@ describe('Reset route admin approval', () => {
     expect(res.body).toEqual({ success: true, backupFilename: 'visits_test.json' });
     expect(performResetAndBackup).toHaveBeenCalledTimes(1);
   });
+
 });

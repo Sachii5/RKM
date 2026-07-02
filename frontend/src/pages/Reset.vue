@@ -2,7 +2,7 @@
   <div class="reset-page max-w-2xl mx-auto">
     <header class="mb-8">
       <h1 class="page-title text-red-600"><i class="fa-solid fa-triangle-exclamation"></i> Atur Ulang Sistem</h1>
-      <p class="page-subtitle text-red-500">ZONA RISIKO TINGGI: Reset harus disetujui oleh Admin. Harap berhati-hati.</p>
+      <p class="page-subtitle text-red-500">ZONA RISIKO TINGGI: Reset membutuhkan approval MGR. Harap berhati-hati.</p>
     </header>
 
     <div class="card glass" style="border-color: rgba(239,68,68,0.3); background: rgba(254, 242, 242, 0.8);">
@@ -17,24 +17,24 @@
       </div>
 
       <div class="approval-box">
-        <label class="approval-label" for="admin-userid">User ID Admin Penyetuju</label>
+        <label class="approval-label" for="admin-userid">User ID Approval MGR</label>
         <input
           id="admin-userid"
           v-model="adminUserid"
           type="text"
           class="approval-input"
           autocomplete="username"
-          placeholder="Masukkan User ID Admin"
+          placeholder="Masukkan User ID MGR"
         />
 
-        <label class="approval-label" for="admin-password">Password Admin Penyetuju</label>
+        <label class="approval-label" for="admin-password">Password Approval MGR</label>
         <input
           id="admin-password"
           v-model="adminPassword"
           type="password"
           class="approval-input"
           autocomplete="current-password"
-          placeholder="Masukkan Password Admin"
+          placeholder="Masukkan Password MGR"
         />
       </div>
 
@@ -73,7 +73,7 @@ const adminPassword = ref('')
 
 const confirmReset = async () => {
   if (!adminUserid.value || !adminPassword.value) {
-    errorMessage.value = 'User ID dan password Admin penyetuju wajib diisi.'
+    errorMessage.value = 'User ID dan password approval MGR wajib diisi.'
     return
   }
 
