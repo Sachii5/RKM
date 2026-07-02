@@ -26,6 +26,9 @@
           <div class="nav-item">
             <router-link to="/survey-analytics" class="nav-link"><i class="fa-solid fa-chart-pie fa-fw"></i> Feedback RKM</router-link>
           </div>
+          <div class="nav-item">
+            <router-link to="/member-last-orders" class="nav-link"><i class="fa-solid fa-clock-rotate-left fa-fw"></i> Terakhir Belanja</router-link>
+          </div>
         </template>
 
         <!-- Tautan Salesman -->
@@ -35,6 +38,9 @@
           </div>
           <div class="nav-item">
             <router-link to="/zones" class="nav-link"><i class="fa-solid fa-clipboard-list fa-fw"></i> Zona Saya</router-link>
+          </div>
+          <div class="nav-item">
+            <router-link to="/member-last-orders" class="nav-link"><i class="fa-solid fa-clock-rotate-left fa-fw"></i> Terakhir Belanja</router-link>
           </div>
           <div class="nav-item">
             <router-link to="/change-password" class="nav-link"><i class="fa-solid fa-key fa-fw"></i> Ganti Kata Sandi</router-link>

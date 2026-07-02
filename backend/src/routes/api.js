@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { getMembers, getMemberOrdersByDate } = require('../db/pg');
+const { getMembers, getMemberOrdersByDate, getMemberLastOrders } = require('../db/pg');
 const db = require('../db/pg_ops');
 const { getZoneByRadius, getZoneByKelurahan, createZoneTransaction, softDeleteZone } = require('../services/zone.service');
 const { getTodayRoute } = require('../services/route.service');
@@ -51,6 +51,12 @@ const isValidSalesmanCode = (s) => typeof s === 'string' && /^[A-Z]{2,5}$/i.test
 const isPositiveInteger = (v) => Number.isInteger(Number(v)) && Number(v) > 0;
 const sanitizeString = (s, maxLen = 100) => typeof s === 'string' ? s.trim().substring(0, maxLen) : '';
 const isWithinMaxLength = (s, maxLen) => !s || (typeof s === 'string' && s.length <= maxLen);
+const requireAnyValidRole = (req, res, next) => {
+  if (!req.user || !['ADMIN', 'SUPERVISOR', 'SALESMAN'].includes(req.user.role)) {
+    return res.status(403).json({ error: 'Forbidden: Insufficient privileges' });
+  }
+  next();
+};
 
 // GET /api/members (Used by Map plotting for Supervisors/Admins)
 router.get('/members', authenticate, requireSupervisorOrAbove, async (req, res) => {
@@ -59,6 +65,35 @@ router.get('/members', authenticate, requireSupervisorOrAbove, async (req, res) 
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/members/last-orders - Last completed order date per member.
+router.get('/members/last-orders', authenticate, requireAnyValidRole, async (req, res) => {
+  const page = Number(req.query.page || 1);
+  const limit = Number(req.query.limit || 25);
+  const requestedSalesman = sanitizeString(req.query.salesman || '', 10).toUpperCase();
+
+  if (!Number.isInteger(page) || page < 1) {
+    return res.status(400).json({ error: 'Parameter page tidak valid' });
+  }
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    return res.status(400).json({ error: 'Parameter limit harus antara 1 sampai 100' });
+  }
+  if (requestedSalesman && !isValidSalesmanCode(requestedSalesman)) {
+    return res.status(400).json({ error: 'Format kode salesman tidak valid' });
+  }
+
+  const salesmanCode = req.user.role === 'SALESMAN'
+    ? req.user.userid.toUpperCase()
+    : requestedSalesman;
+
+  try {
+    const result = await getMemberLastOrders({ salesmanCode, page, limit });
+    res.json(result);
+  } catch (err) {
+    console.error('members/last-orders error:', err.message);
+    res.status(500).json({ error: 'Gagal memuat data terakhir belanja member' });
   }
 });
 

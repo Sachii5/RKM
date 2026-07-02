@@ -116,9 +116,90 @@ const getMemberOrdersByDateRange = async (startDate, endDate, memberCodes) => {
   }
 };
 
+const getMemberLastOrders = async ({ salesmanCode = '', page = 1, limit = 25 } = {}) => {
+  const safePage = Math.max(1, Number(page) || 1);
+  const safeLimit = Math.min(100, Math.max(10, Number(limit) || 25));
+  const offset = (safePage - 1) * safeLimit;
+  const params = [];
+  const filters = [];
+
+  if (salesmanCode) {
+    params.push(salesmanCode.toUpperCase());
+    filters.push(`salesman = $${params.length}`);
+  }
+
+  const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+  const limitParam = params.length + 1;
+  const offsetParam = params.length + 2;
+
+  const query = `
+    WITH last_orders AS (
+      SELECT
+        UPPER(tc.cus_nosalesman) AS salesman,
+        tc.cus_kodemember AS kode_member,
+        UPPER(tc.cus_namamember) AS nama_member,
+        tc.cus_hpmember AS nomor_member,
+        tc.cus_alamatemail AS email_member,
+        UPPER(crm.crm_alamatusaha1) AS alamat,
+        UPPER(crm.crm_alamatusaha4) AS kelurahan,
+        UPPER(crm.crm_kecamatan_usaha) AS kecamatan,
+        MAX(toh.obi_tglpb)::date AS terakhir_order
+      FROM tbtr_obi_h toh
+      JOIN tbmaster_customer tc
+        ON tc.cus_kodemember = toh.obi_kdmember
+       AND tc.cus_kodeigr = toh.obi_kodeigr
+      JOIN tbmaster_customercrm crm
+        ON crm.crm_kodemember = toh.obi_kdmember
+       AND crm.crm_kodeigr = toh.obi_kodeigr
+      WHERE toh.obi_recid = '6'
+        AND toh.obi_kodeigr = '2K'
+      GROUP BY
+        tc.cus_nosalesman,
+        tc.cus_kodemember,
+        tc.cus_namamember,
+        tc.cus_hpmember,
+        tc.cus_alamatemail,
+        crm.crm_alamatusaha1,
+        crm.crm_alamatusaha4,
+        crm.crm_kecamatan_usaha
+    ),
+    filtered AS (
+      SELECT
+        *,
+        CURRENT_DATE - terakhir_order AS hari_tidak_belanja
+      FROM last_orders
+      ${whereClause}
+    )
+    SELECT *, COUNT(*) OVER()::int AS total_count
+    FROM filtered
+    ORDER BY terakhir_order ASC, kode_member ASC
+    LIMIT $${limitParam} OFFSET $${offsetParam}
+  `;
+
+  try {
+    const res = await pool.query(query, [...params, safeLimit, offset]);
+    const total = res.rows[0]?.total_count || 0;
+    const data = res.rows.map(({ total_count, ...row }) => row);
+
+    return {
+      data,
+      pagination: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages: Math.ceil(total / safeLimit)
+      }
+    };
+  } catch (error) {
+    console.error('Error fetching member last orders from PG', error);
+    throw error;
+  }
+};
+
 module.exports = {
   pool,
   getMembers,
   getMemberOrdersByDate,
-  getMemberOrdersByDateRange
+  getMemberOrdersByDateRange,
+  getMemberLastOrders
 };

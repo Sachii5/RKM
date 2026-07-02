@@ -8,6 +8,7 @@ import ZoneList from '../pages/ZoneList.vue'
 import ManagerDashboard from '../pages/ManagerDashboard.vue'
 import SurveyAnalytics from '../pages/SurveyAnalytics.vue'
 import UserManagement from '../pages/UserManagement.vue'
+import MemberLastOrder from '../pages/MemberLastOrder.vue'
 import { useAuthStore } from '../stores/auth'
 
 const routes = [
@@ -36,6 +37,11 @@ const routes = [
     path: '/zones', 
     component: ZoneList,
     meta: { requiresAuth: true, allowedRoles: ['ADMIN', 'SUPERVISOR', 'SALESMAN'] } 
+  },
+  {
+    path: '/member-last-orders',
+    component: MemberLastOrder,
+    meta: { requiresAuth: true, allowedRoles: ['ADMIN', 'SUPERVISOR', 'SALESMAN'] }
   },
   { 
     path: '/evaluation', 
